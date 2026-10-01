@@ -1,0 +1,19 @@
+# Secrets (repositori públic!)
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+
+# Sessions de Telegram / Instagram (Fase 3)
+*.session
+pipeline/sessions/
+
+# Sistema
+.DS_Store
+Thumbs.db

@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+/* Tokens de disseny (vegeu la maqueta web a PROPOSTA.md) */
+:root {
+  --bg: #f3f4f2;
+  --surface: #ffffff;
+  --surface-2: #eceeeb;
+  --line: #dcdfda;
+  --fg: #1d211f;
+  --fg-2: #565d59;
+  --fg-3: #8a918c;
+  --accent: #2f5d50;
+  --accent-soft: #dfeae5;
+  --star: #b7791f;
+  --going: #2f7d4f;
+  --warn-bg: #fbf0d9;
+  --warn-fg: #7a4f0c;
+  --cat-cultura: #6b5fd0;
+  --cat-cultura-soft: #ecebfb;
+  --cat-esport: #14866a;
+  --cat-esport-soft: #dcf2ea;
+  --cat-formacio: #2e74c2;
+  --cat-formacio-soft: #e2eefa;
+  --cat-gastro: #c7552b;
+  --cat-gastro-soft: #fbe9e2;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141716;
+    --surface: #1c201e;
+    --surface-2: #252a27;
+    --line: #323834;
+    --fg: #e8ece9;
+    --fg-2: #a9b1ac;
+    --fg-3: #78807b;
+    --accent: #8cc7b3;
+    --accent-soft: #22372f;
+    --star: #e3ad55;
+    --going: #6fcf94;
+    --warn-bg: #3a2e17;
+    --warn-fg: #f1cf8c;
+    --cat-cultura: #a99ff0;
+    --cat-cultura-soft: #2c2850;
+    --cat-esport: #5fd0ad;
+    --cat-esport-soft: #16362c;
+    --cat-formacio: #7fb4ec;
+    --cat-formacio-soft: #1a2e45;
+    --cat-gastro: #f0956f;
+    --cat-gastro-soft: #43251a;
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-fg: var(--fg);
+  --color-fg-2: var(--fg-2);
+  --color-fg-3: var(--fg-3);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-star: var(--star);
+  --color-going: var(--going);
+  --color-warn-bg: var(--warn-bg);
+  --color-warn-fg: var(--warn-fg);
+  --color-cultura: var(--cat-cultura);
+  --color-cultura-soft: var(--cat-cultura-soft);
+  --color-esport: var(--cat-esport);
+  --color-esport-soft: var(--cat-esport-soft);
+  --color-formacio: var(--cat-formacio);
+  --color-formacio-soft: var(--cat-formacio-soft);
+  --color-gastro: var(--cat-gastro);
+  --color-gastro-soft: var(--cat-gastro-soft);
+  --font-display: var(--font-display);
+  --font-sans: var(--font-body);
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+}

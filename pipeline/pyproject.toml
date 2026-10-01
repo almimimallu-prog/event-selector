@@ -1,0 +1,17 @@
+[project]
+name = "event-pipeline"
+version = "0.1.0"
+description = "Pipeline d'extracció d'Event Selector (fonts → Supabase)"
+requires-python = ">=3.12"
+dependencies = [
+  "pydantic>=2.9",
+  "python-dotenv>=1.0",
+  "httpx>=0.27",
+  "tzdata>=2024.1",  # Windows no porta la base de dades de zones horàries
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
