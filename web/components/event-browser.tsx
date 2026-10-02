@@ -330,15 +330,25 @@ export function EventBrowser(props: Props) {
                className="w-full rounded-2xl bg-surface p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
             <p id="ask-calendar" className="font-semibold">Vols afegir-lo al teu Google Calendar?</p>
             <p className="mt-1 text-sm text-fg-2">{selected.title}</p>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => setAskCalendar(false)}
-                      className="h-11 rounded-lg border border-line bg-surface font-medium text-fg-2">
-                No
-              </button>
+            <div className="mt-4 grid gap-2">
               <a href={googleCalendarUrl(selected)} target="_blank" rel="noopener noreferrer" onClick={() => setAskCalendar(false)}
                  className="inline-flex h-11 items-center justify-center gap-1.5 rounded-lg bg-accent font-semibold text-surface">
-                <CalendarPlus size={17} /> Sí, afegir
+                <CalendarPlus size={17} /> Sí, afegir a Google Calendar
               </a>
+              {isMine(selected) ? (
+                <p className="flex h-11 items-center justify-center gap-1.5 rounded-lg bg-warn-bg text-sm font-medium text-warn-fg">
+                  <Star size={17} className="fill-current" /> Ja és a la teva llista
+                </p>
+              ) : (
+                <button type="button" onClick={() => { toggle(selected, "interested"); setAskCalendar(false); }}
+                        className="inline-flex h-11 items-center justify-center gap-1.5 rounded-lg border border-line bg-surface font-semibold">
+                  <Star size={17} /> Guardar a «M&apos;interessa»
+                </button>
+              )}
+              <button type="button" onClick={() => setAskCalendar(false)}
+                      className="h-11 rounded-lg font-medium text-fg-2">
+                No, gràcies
+              </button>
             </div>
           </div>
         </div>
