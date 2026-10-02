@@ -2,6 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { Suspense, useActionState } from "react";
+import { useHashSession } from "@/components/use-hash-session";
 import { sendMagicLink, type LoginState } from "./actions";
 
 // Missatges comprensibles per als errors més habituals de l'enllaç.
@@ -23,6 +24,8 @@ function LinkError() {
 
 export default function LoginPage() {
   const [state, action, pending] = useActionState<LoginState, FormData>(sendMagicLink, { status: "idle" });
+  // Si Supabase envia l'enllaç a l'inici (Site URL), la sessió arriba aquí després del #.
+  const hashSession = useHashSession();
 
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-6 px-4 py-16">
@@ -33,11 +36,16 @@ export default function LoginPage() {
       <Suspense>
         <LinkError />
       </Suspense>
-      {state.status === "sent" ? (
+      {hashSession.error && (
+        <p className="rounded-lg bg-warn-bg px-3 py-2 text-sm text-warn-fg">{explain(hashSession.error)}</p>
+      )}
+      {hashSession.working ? (
+        <p className="text-fg-2">Entrant…</p>
+      ) : state.status === "sent" ? (
         <div className="rounded-xl border border-line bg-surface p-5">
           <p className="font-semibold">Revisa el correu</p>
           <p className="mt-1 text-sm text-fg-2">
-            T&apos;hem enviat un enllaç per entrar. Obre&apos;l en aquest mateix navegador.
+            T&apos;hem enviat un enllaç per entrar. El pots obrir des de qualsevol navegador o dispositiu.
           </p>
         </div>
       ) : (
