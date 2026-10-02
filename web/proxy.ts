@@ -5,6 +5,15 @@ import { NextResponse, type NextRequest } from "next/server";
 const PUBLIC_PATHS = ["/login", "/auth", "/dev"];
 
 export async function proxy(request: NextRequest) {
+  // L'enllaç del correu pot arribar a qualsevol pàgina (p. ex. a "/" si Supabase hi redirigeix per defecte):
+  // si porta el codi d'inici de sessió, l'enviem a /auth/confirm perquè no es perdi.
+  const { pathname, searchParams } = request.nextUrl;
+  if ((searchParams.has("code") || searchParams.has("token_hash")) && !pathname.startsWith("/auth/confirm")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth/confirm";
+    return NextResponse.redirect(url);
+  }
+
   let response = NextResponse.next({ request });
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

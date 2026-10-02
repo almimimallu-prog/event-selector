@@ -1,7 +1,25 @@
 "use client";
 
-import { useActionState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useActionState } from "react";
 import { sendMagicLink, type LoginState } from "./actions";
+
+// Missatges comprensibles per als errors més habituals de l'enllaç.
+function explain(error: string): string {
+  if (/code verifier|code_verifier|PKCE/i.test(error)) {
+    return "L'enllaç s'ha obert en un navegador diferent del que el va demanar. Demana'n un de nou i obre'l en aquest mateix navegador.";
+  }
+  if (/expired|invalid|used|not found/i.test(error)) {
+    return "L'enllaç ha caducat o ja s'ha fet servir. Demana'n un de nou.";
+  }
+  return `No s'ha pogut iniciar la sessió (${error}). Demana un enllaç nou.`;
+}
+
+function LinkError() {
+  const error = useSearchParams().get("error");
+  if (!error) return null;
+  return <p className="rounded-lg bg-warn-bg px-3 py-2 text-sm text-warn-fg">{explain(error)}</p>;
+}
 
 export default function LoginPage() {
   const [state, action, pending] = useActionState<LoginState, FormData>(sendMagicLink, { status: "idle" });
@@ -12,6 +30,9 @@ export default function LoginPage() {
         <span className="size-3 rounded-[3px] bg-accent" />
         Event Selector
       </div>
+      <Suspense>
+        <LinkError />
+      </Suspense>
       {state.status === "sent" ? (
         <div className="rounded-xl border border-line bg-surface p-5">
           <p className="font-semibold">Revisa el correu</p>

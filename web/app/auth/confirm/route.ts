@@ -12,11 +12,20 @@ export async function GET(request: NextRequest) {
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
 
+  // Supabase també pot tornar amb ?error=…&error_description=… (enllaç caducat o ja utilitzat).
+  if (searchParams.get("error_description")) {
+    return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(searchParams.get("error_description")!)}`, origin));
+  }
+
   const { error } = code
     ? await supabase.auth.exchangeCodeForSession(code)
     : tokenHash && type
       ? await supabase.auth.verifyOtp({ type, token_hash: tokenHash })
-      : { error: new Error("Falta el codi") };
+      : { error: new Error("L'enllaç no porta cap codi") };
 
-  return NextResponse.redirect(new URL(error ? "/login?error=enllac" : "/", origin));
+  if (error) {
+    console.error("auth/confirm:", error.message);
+    return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(error.message)}`, origin));
+  }
+  return NextResponse.redirect(new URL("/", origin));
 }
