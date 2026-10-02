@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { CATEGORIES, DISMISS_REASONS } from "@/lib/categories";
 import { WEEKDAYS, local, shortDate } from "@/lib/dates";
 import { googleCalendarUrl, mapsUrl } from "@/lib/links";
-import { SCORE_PARTS, nearestZoneLabel, type Score } from "@/lib/ranking";
+import { nearestZoneLabel, type Score } from "@/lib/ranking";
 import { createClient } from "@/lib/supabase/client";
 import type { AppEvent, DismissReason } from "@/lib/types";
 import { CategoryChip, explanation, priceLabel } from "./event-row";
@@ -191,23 +191,6 @@ export function EventDetail(props: Props) {
                 <p className="mt-1 whitespace-pre-line">{event.description}</p>
               </details>
             )}
-          </section>
-        )}
-
-        {score && (
-          <section>
-            <h3 className="mb-2 text-[11px] font-semibold tracking-[0.08em] text-fg-3 uppercase">Per què et surt?</h3>
-            <div className="grid gap-1.5">
-              {SCORE_PARTS.map((p, i) => (
-                <div key={p.key} className="grid grid-cols-[90px_minmax(0,1fr)_28px] items-center gap-2.5 text-[13px] text-fg-2 tabular-nums">
-                  <span>{p.label}</span>
-                  <div className="h-1.5 overflow-hidden rounded bg-surface-2">
-                    <div className={`h-full rounded ${cat.text} bg-current`} style={{ width: `${Math.round((score.parts[i] / p.max) * 100)}%` }} />
-                  </div>
-                  <span className="text-right">{score.parts[i]}</span>
-                </div>
-              ))}
-            </div>
           </section>
         )}
 
