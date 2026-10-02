@@ -14,8 +14,10 @@ import httpx
 API = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 # Àlies estables que apunten als Flash més recents; es poden canviar amb GEMINI_MODEL / GEMINI_FALLBACK_MODEL.
 # Cada model té quota gratuïta pròpia: si el principal s'esgota o està saturat, es prova l'alternatiu.
-DEFAULT_MODEL = "gemini-flash-latest"
-DEFAULT_FALLBACK_MODEL = "gemini-flash-lite-latest"
+# Nivell gratuït (comprovat el 2026-10-02): Flash només admet 20 crides/dia → Flash Lite és el principal i
+# Flash queda de reserva. La cerca a Google (grounding) no està inclosa al nivell gratuït.
+DEFAULT_MODEL = "gemini-flash-lite-latest"
+DEFAULT_FALLBACK_MODEL = "gemini-flash-latest"
 OVERLOADED = {500, 503, 504}
 
 
