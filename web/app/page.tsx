@@ -1,21 +1,26 @@
-// Pantalla provisional: el calendari arriba a la Fase 1, punt 5.
-export default function Home() {
+import { EventBrowser } from "@/components/event-browser";
+import { loadEvents, loadSettings } from "@/lib/data";
+import { addDays, isValidKey, madridMidnight, todayKey, weekStart } from "@/lib/dates";
+import { createClient } from "@/lib/supabase/server";
+
+// Calendari: la setmana de ?week=AAAA-MM-DD (per defecte, l'actual).
+export default async function CalendarPage({ searchParams }: PageProps<"/">) {
+  const { week } = await searchParams;
+  const today = todayKey();
+  const requested = typeof week === "string" && isValidKey(week) ? week : today;
+  const start = weekStart(requested);
+  const end = addDays(start, 7);
+  const initialDay =
+    requested !== start ? requested : today >= start && today < end ? today : start;
+
+  const supabase = await createClient();
+  const [{ prefs, zones }, events] = await Promise.all([
+    loadSettings(supabase),
+    loadEvents(supabase, madridMidnight(start), madridMidnight(end), "session"),
+  ]);
+
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-6 px-4 py-16">
-      <div className="flex items-center gap-2 font-display text-2xl font-bold">
-        <span className="size-3 rounded-[3px] bg-accent" />
-        Event Selector
-      </div>
-      <p className="max-w-prose text-fg-2">
-        Tots els esdeveniments d&apos;Igualada, Barcelona i rodalia en un sol lloc. L&apos;app està en
-        construcció (Fase 1).
-      </p>
-      <ul className="flex flex-wrap gap-2 text-sm font-medium">
-        <li className="rounded-full bg-cultura-soft px-3 py-1 text-cultura">Cultura</li>
-        <li className="rounded-full bg-esport-soft px-3 py-1 text-esport">Esport/natura</li>
-        <li className="rounded-full bg-formacio-soft px-3 py-1 text-formacio">Formació/tech</li>
-        <li className="rounded-full bg-gastro-soft px-3 py-1 text-gastro">Gastronomia/social</li>
-      </ul>
-    </main>
+    <EventBrowser key={start} mode="calendar" weekStart={start} initialDay={initialDay}
+                  events={events} prefs={prefs} zones={zones} />
   );
 }
