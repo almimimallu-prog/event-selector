@@ -106,7 +106,8 @@ def parse_rows(rows: list[dict], today: date, until: date, zones=DEFAULT_ZONES) 
         )
         occurrences = _occurrences(day0, day1, horari, today, until)
         # Un mateix codi pot tenir una fila per local (festivals en diverses sales): el local forma part de l'id.
-        place = _slug(row.get("espai") or f"{lat:.4f},{lon:.4f}")
+        # Les coordenades també hi van: "Diferents espais" pot repetir-se amb ubicacions diferents.
+        place = f"{_slug(row.get('espai') or 'lloc')}@{lat:.4f},{lon:.4f}"
         for day, long_running in occurrences:
             if long_running:
                 start = datetime.combine(day0, datetime.min.time(), TIMEZONE)
