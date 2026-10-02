@@ -16,6 +16,8 @@ export const metadata: Metadata = {
   title: "Event Selector",
   description: "Tots els esdeveniments d'Igualada, Barcelona i rodalia en un sol lloc.",
   applicationName: "Event Selector",
+  icons: { icon: "/icon.svg", apple: "/apple-icon.png" },
+  appleWebApp: { capable: true, title: "Events", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
