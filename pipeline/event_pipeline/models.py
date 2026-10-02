@@ -11,6 +11,9 @@ from pydantic import BaseModel, Field, model_validator
 from .config import TIMEZONE
 
 Category = Literal["cultura", "esport_natura", "formacio_tech", "gastronomia_social"]
+# session: un dia i hora concrets (surt al calendari) · long_running: exposicions i similars (pestanya pròpia)
+# course: curs amb inscripció per a totes les sessions (secció "Cursos"). Coincideix amb l'enum event_kind.
+Kind = Literal["session", "long_running", "course"]
 
 # Per sota d'aquest llindar l'esdeveniment va a la safata "Per revisar".
 REVIEW_CONFIDENCE = 0.6
@@ -77,7 +80,8 @@ class SourceEvent(BaseModel):
     start: datetime
     end: datetime | None = None
     all_day: bool = False
-    long_running: bool = False          # exposicions i similars: de dia X a dia Y, sense sessions concretes
+    kind: Kind = "session"
+    schedule_text: str | None = None    # horari llegible per a cursos i llarga durada ("Dilluns de 10.30 h a 12 h")
     venue_name: str | None = None
     address: str | None = None
     city: str | None = None

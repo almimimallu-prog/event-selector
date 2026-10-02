@@ -32,18 +32,17 @@ def main() -> None:
     def zone(e):
         return min(DEFAULT_ZONES, key=lambda z: haversine_km(e.lat, e.lon, z.lat, z.lon)).name
 
-    long_running = [e for e in events if e.long_running]
-    dated = sorted((e for e in events if not e.long_running), key=lambda e: e.start)
-    print(f"\n{args.source}: {len(events)} esdeveniments en {args.days} dies "
-          f"({len(dated)} amb data, {len(long_running)} de llarga durada)")
+    dated = sorted((e for e in events if e.kind == "session"), key=lambda e: e.start)
+    kinds = Counter(e.kind for e in events)
+    print(f"\n{args.source}: {len(dated)} sessions en {args.days} dies · "
+          f"{kinds['long_running']} de llarga durada · {kinds['course']} cursos")
     print("Per zona:      ", dict(Counter(zone(e) for e in events)))
     print("Per categoria: ", dict(Counter(e.category for e in events)))
     print("Categoria incerta:", sum(e.category_guessed for e in events),
           "· Sense hora:", sum(e.all_day for e in dated),
           "· Gratuïts:", sum(bool(e.is_free) for e in events),
           "· Amb imatge:", sum(bool(e.image_url) for e in events),
-          "· Sessions de cicles:", sum(bool(e.series_key) for e in events),
-          "· de les quals, cursos:", sum("curs" in e.tags for e in events))
+          "· Sessions de cicles:", sum(bool(e.series_key) for e in events))
     print("Per dia:       ", " ".join(f"{WEEKDAYS[d.weekday()]}{d.day}:{n}"
                                      for d, n in sorted(Counter(e.start.date() for e in dated).items())))
     print("\nMostra:")

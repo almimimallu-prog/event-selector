@@ -104,6 +104,18 @@ def _price(text: str | None):
     return parse_price(text)
 
 
+def _schedule_text(timetable: list[dict[str, str]], until: date | None = None) -> str | None:
+    parts = []
+    for cells in timetable:
+        part = " ".join(p for p in (cells["days"], cells["hours"]) if p).strip()
+        if part and part not in parts:
+            parts.append(part)
+    text = " · ".join(parts)
+    if text and until:
+        text += f" (fins al {until.day}/{until.month})"
+    return text or None
+
+
 def _links(row: dict) -> tuple[str | None, str | None]:
     value = (row.get("values_value") or "").strip()
     if not value.startswith("http"):
@@ -130,6 +142,12 @@ def parse_rows(rows: list[dict], today: date, until: date, zones=DEFAULT_ZONES) 
         long_running = not sessions and day1 > day0
         if is_exhibition(title) and day1 > day0:
             sessions, long_running = [], True
+        # Curs: sessions setmanals durant setmanes. Una sola fitxa amb la propera sessió i l'horari.
+        is_course = not long_running and (day1 - day0).days > COURSE_MIN_SPAN_DAYS
+        if is_course:
+            sessions = _sessions(day0, day1, timetable, today, day1)[:1]
+            if not sessions:
+                continue
         if not sessions and not long_running:
             if not today <= day0 <= until:
                 continue
@@ -152,15 +170,17 @@ def parse_rows(rows: list[dict], today: date, until: date, zones=DEFAULT_ZONES) 
             category=category or "cultura",
             category_guessed=category is None,
         )
+        last_day_end = datetime.combine(day1, datetime.max.time().replace(microsecond=0), TIMEZONE)
         if long_running:
             price_min, is_free, price_text = _price(timetable[0]["price"] if timetable else None)
             events.append(SourceEvent(
                 **base,
                 external_id=f"bcn:{row['register_id']}",
                 start=datetime.combine(day0, datetime.min.time(), TIMEZONE),
-                end=datetime.combine(day1, datetime.max.time().replace(microsecond=0), TIMEZONE),
+                end=last_day_end,
                 all_day=True,
-                long_running=True,
+                kind="long_running",
+                schedule_text=_schedule_text(timetable),
                 price_min=price_min,
                 is_free=is_free,
                 price_text=price_text,
@@ -168,14 +188,11 @@ def parse_rows(rows: list[dict], today: date, until: date, zones=DEFAULT_ZONES) 
             continue
 
         # Sèrie segons les dates de tota l'activitat, no segons les sessions que cauen dins la finestra.
-        multi = len(sessions) > 1 or (day1 - day0).days > MAX_DAILY_EXPANSION_DAYS
-        is_course = (day1 - day0).days > COURSE_MIN_SPAN_DAYS
+        multi = not is_course and (len(sessions) > 1 or (day1 - day0).days > MAX_DAILY_EXPANSION_DAYS)
         for day, start_t, end_t, cells in sessions:
             price_min, is_free, price_text = _price(cells["price"])
             notes = cells["notes"]
-            tags = ["curs"] if is_course else []
-            if re.search(r"inscripci", notes + cells["price"], re.I):
-                tags.append("inscripció prèvia")
+            tags = ["inscripció prèvia"] if re.search(r"inscripci", notes + cells["price"], re.I) else []
             if start_t:
                 start = datetime.combine(day, start_t, TIMEZONE)
                 end = datetime.combine(day, end_t, TIMEZONE) if end_t else None
@@ -187,8 +204,11 @@ def parse_rows(rows: list[dict], today: date, until: date, zones=DEFAULT_ZONES) 
                 **base,
                 external_id=f"bcn:{row['register_id']}" + (f":{day.isoformat()}" if multi else ""),
                 start=start,
-                end=end,
+                # Curs: `start` és la propera sessió i `end`, l'últim dia del curs.
+                end=last_day_end if is_course else end,
                 all_day=start_t is None,
+                kind="course" if is_course else "session",
+                schedule_text=_schedule_text(timetable, until=day1) if is_course else None,
                 price_min=price_min,
                 is_free=is_free,
                 price_text=price_text,

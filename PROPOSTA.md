@@ -121,6 +121,13 @@ Bloqueig (mateix dia, < 2 km) → puntuació (trigram del títol + diferència h
 ### Recurrents
 Cada sessió és un esdeveniment independent; la fitxa enllaça "Altres sessions del cicle".
 
+### Tipus d'esdeveniment (decisió 2026-10-02)
+| Tipus | Què és | On es veu |
+|---|---|---|
+| **Sessió** | Dia i hora concrets (inclou cicles curts: una sessió per setmana) | Calendari i llista del dia |
+| **Llarga durada** | Exposicions, mostres i activitats obertes setmanes o mesos | **Pestanya/filtre propi** "Exposicions", no a la llista del dia |
+| **Curs** | Sessions setmanals durant més de 3 setmanes amb inscripció a tot el curs (p. ex. tallers trimestrals dels centres cívics) | **Secció "Cursos"**, una fitxa per curs amb la propera sessió i l'horari |
+
 ## 8. Interfície
 
 ### Estil

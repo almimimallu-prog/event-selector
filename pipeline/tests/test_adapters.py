@@ -51,7 +51,7 @@ def test_gencat_long_and_permanent_activities_are_long_running():
     expo = gencat_row(data_inici="2026-05-17T00:00:00.000", data_fi="2026-12-13T00:00:00.000")
     permanent = gencat_row(codi="2", data_fi="9999-09-09T00:00:00.000", permanent="Sí")
     events = gencat.parse_rows([expo, permanent], TODAY, UNTIL)
-    assert all(e.long_running and e.all_day for e in events)
+    assert all(e.kind == "long_running" and e.all_day for e in events)
     assert events[1].end is None
 
 
@@ -116,16 +116,24 @@ def test_bcn_single_event():
     assert event.category == "cultura" and not event.category_guessed
 
 
-def test_bcn_weekly_course_skips_holiday_and_is_tagged():
+def test_bcn_weekly_course_is_one_course_card():
     row = bcn_row(name="Taller 'Hipoestiraments'", start_date="2026-09-28T03:00:00+02:00",
                   end_date="2026-12-14T03:00:00+01:00", timetable=TIMETABLE_WEEKLY)
-    events = bcn.parse_rows([row], TODAY, UNTIL)
-    assert [e.start.date() for e in events] == [date(2026, 10, 5)]  # el 12 és festiu
-    [event] = events
-    assert event.start.time() == time(10, 30)  # grups A i B el mateix dia → un sol esdeveniment
+    [event] = bcn.parse_rows([row], TODAY, UNTIL)
+    assert event.kind == "course" and event.external_id == "bcn:99001" and event.series_key is None
+    assert event.start.date() == date(2026, 10, 5) and event.start.time() == time(10, 30)  # propera sessió
+    assert event.end.date() == date(2026, 12, 14)  # últim dia del curs
+    assert event.schedule_text == "Dilluns excepte 12 octubre de 10.30 h a 12.00 h · "         "Dilluns excepte 12 octubre de 12.00 h a 13.30 h (fins al 14/12)"
     assert event.price_min == 85.85 and event.price_text == "Entrada general: 85.85 €"
-    assert {"curs", "inscripció prèvia"} <= set(event.tags)
-    assert event.series_key == "bcn:99001" and event.external_id == "bcn:99001:2026-10-05"
+    assert "inscripció prèvia" in event.tags
+
+
+def test_bcn_short_weekly_cycle_stays_as_sessions():
+    row = bcn_row(name="Cicle de cinema", start_date="2026-10-02T03:00:00+02:00",
+                  end_date="2026-10-16T03:00:00+02:00")  # divendres 2, 9 i 16
+    events = bcn.parse_rows([row], TODAY, UNTIL)
+    assert [e.start.day for e in events] == [2, 9, 16]
+    assert {e.kind for e in events} == {"session"} and {e.series_key for e in events} == {"bcn:99001"}
 
 
 def test_bcn_exhibition_with_opening_hours_is_long_running():
@@ -136,7 +144,7 @@ def test_bcn_exhibition_with_opening_hours_is_long_running():
     row = bcn_row(name="Exposició 'Paisatges perduts'", start_date="2026-09-01T03:00:00+02:00",
                   end_date="2026-11-30T03:00:00+01:00", timetable=f"<table>{hours}</table>")
     [event] = bcn.parse_rows([row], TODAY, UNTIL)
-    assert event.long_running and event.all_day
+    assert event.kind == "long_running" and event.all_day
 
 
 def test_bcn_reads_utf16_csv():
