@@ -11,6 +11,7 @@ from datetime import datetime
 
 from . import EXTRACTOR_VERSION
 from .adapters import bcn, gencat
+from .geo import locate_municipality
 from .models import ExtractedEvent, SourceEvent
 
 SEED_SOURCES = [
@@ -37,9 +38,53 @@ SEED_SOURCES = [
         "name": "Igualada Turisme",
         "type": "web",
         "url": "https://igualadaturisme.com/agenda-propers-esdeveniments/",
-        "config": {"adapter": "llm", "default_lat": 41.5789, "default_lon": 1.6175},
+        "config": {"adapter": "llm"},
         "schedule_hours": 24,
         "default_city": "Igualada",
+        "discovered_via": "seed",
+    },
+    # Igualada i l'Anoia (afegides el 2026-10-02). Cap no té dades estructurades → Gemini.
+    {
+        "name": "Tiquets Igualada",  # venda d'entrades municipal: Teatre Municipal l'Ateneu, curses...
+        "type": "web",
+        "url": "https://tiquetsigualada.cat/",
+        "config": {"adapter": "llm"},
+        "schedule_hours": 24,
+        "default_city": "Igualada",
+        "discovered_via": "seed",
+    },
+    {
+        "name": "Teatre de l'Aurora",
+        "type": "web",
+        "url": "https://www.teatreaurora.cat/ca/programacio.html",
+        "config": {"adapter": "llm"},
+        "schedule_hours": 48,
+        "default_city": "Igualada",
+        "discovered_via": "seed",
+    },
+    {
+        "name": "Ateneu Igualadí",
+        "type": "web",
+        "url": "https://www.ateneuigualadi.cat/",
+        "config": {"adapter": "llm"},
+        "schedule_hours": 48,
+        "default_city": "Igualada",
+        "discovered_via": "seed",
+    },
+    {
+        "name": "Anoia Diari (agenda)",
+        "type": "web",
+        "url": "https://anoiadiari.cat/agenda/",
+        "config": {"adapter": "llm"},
+        "schedule_hours": 24,
+        "discovered_via": "seed",
+    },
+    {
+        "name": "La Veu de l'Anoia (agenda)",
+        "type": "web",
+        "url": "https://veuanoia.cat/el-calendari-de-lanoia/",
+        "config": {"adapter": "llm"},
+        "schedule_hours": 24,
         "discovered_via": "seed",
     },
 ]
@@ -80,11 +125,13 @@ def item_from_extracted(event: ExtractedEvent, source: dict, now: datetime) -> d
     if "no és un esdeveniment" in problems or "ja ha passat" in problems:
         return None
     payload = event.model_dump(mode="json")
-    config = source.get("config") or {}
-    city = event.city or source.get("default_city")
-    same_city = city and source.get("default_city") and city.lower() == source["default_city"].lower()
+    # Ubicació aproximada pel municipi (fins que hi hagi geocodificació de locals).
+    place = locate_municipality(event.city or source.get("default_city"))
+    city = place[0] if place else (event.city or source.get("default_city"))
     return {
-        "external_id": f"{_slug(event.title)}:{event.start.date().isoformat()}",
+        # Amb l'hora: el mateix espectacle pot fer dues sessions el mateix dia (18:00 i 20:00).
+        "external_id": f"{_slug(event.title)}:{event.start.date().isoformat()}"
+                       + ("" if event.all_day else f"T{event.start:%H%M}"),
         "title": event.title,
         "start": _iso(event.start),
         "end": _iso(event.end),
@@ -93,9 +140,8 @@ def item_from_extracted(event: ExtractedEvent, source: dict, now: datetime) -> d
         "venue_name": event.venue_name,
         "address": event.address,
         "city": city,
-        # Fins que hi hagi geocodificació, el centre de la ciutat per defecte de la font.
-        "lat": config.get("default_lat") if same_city else None,
-        "lon": config.get("default_lon") if same_city else None,
+        "lat": place[1] if place else None,
+        "lon": place[2] if place else None,
         "price_min": event.price_min,
         "is_free": event.is_free,
         "price_text": event.price_text,

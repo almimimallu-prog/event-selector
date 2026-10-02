@@ -28,6 +28,12 @@ def test_naive_dates_are_local_time():
     assert make().start.tzinfo == TIMEZONE
 
 
+def test_llm_utc_suffix_is_read_as_local_wall_time():
+    event = make(start="2026-10-04T12:15:00Z", end="2026-10-04T13:00:00+00:00")
+    assert (event.start.hour, event.start.minute, event.start.tzinfo) == (12, 15, TIMEZONE)
+    assert event.end.hour == 13
+
+
 def test_valid_event_has_no_problems():
     assert make().problems(NOW) == []
 

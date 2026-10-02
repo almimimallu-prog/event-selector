@@ -45,10 +45,10 @@ class ExtractedEvent(BaseModel):
 
     @model_validator(mode="after")
     def _localize(self) -> "ExtractedEvent":
-        # Les dates sense zona s'interpreten com a hora local de Catalunya.
-        if self.start.tzinfo is None:
-            self.start = self.start.replace(tzinfo=TIMEZONE)
-        if self.end is not None and self.end.tzinfo is None:
+        # L'LLM ha de donar l'hora local de Catalunya sense zona, però a vegades hi enganxa una "Z"
+        # (12:15 → "12:15Z"). Sempre és l'hora del cartell: es reinterpreta com a hora local.
+        self.start = self.start.replace(tzinfo=TIMEZONE)
+        if self.end is not None:
             self.end = self.end.replace(tzinfo=TIMEZONE)
         if self.end is not None and self.end < self.start:
             raise ValueError("end ha de ser posterior a start")

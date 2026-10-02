@@ -100,3 +100,24 @@ def test_keywords(title, category):
 def test_gencat_tags_ignore_ambiguous_routes():
     assert from_gencat_tags("agenda:categories/conferencies") == "formacio_tech"
     assert from_gencat_tags("agenda:categories/rutes-i-visites") is None
+
+
+@pytest.mark.parametrize(
+    ("name", "official"),
+    [
+        ("Igualada", "Igualada"),
+        ("vilanova del cami", "Vilanova del Camí"),
+        ("Montbui", "Santa Margarida de Montbui"),
+        ("El Bruc", "El Bruc"),
+        ("Bruc", "El Bruc"),
+        ("l'Albi", "L'Albi"),
+        ("Odena", "Òdena"),
+        ("Copons, Anoia", "Copons"),
+        ("Springfield", None),
+    ],
+)
+def test_locate_municipality(name, official):
+    from event_pipeline.geo import locate_municipality
+
+    found = locate_municipality(name)
+    assert (found[0] if found else None) == official
