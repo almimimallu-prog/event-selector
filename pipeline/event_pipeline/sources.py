@@ -10,7 +10,7 @@ import re
 from datetime import datetime
 
 from . import EXTRACTOR_VERSION
-from .adapters import bcn, gencat
+from .adapters import bcn, diba, gencat
 from .geo import locate_municipality
 from .models import ExtractedEvent, SourceEvent
 
@@ -78,6 +78,59 @@ SEED_SOURCES = [
         "config": {"adapter": "llm"},
         "schedule_hours": 24,
         "discovered_via": "seed",
+    },
+    # Afegides el 2026-10-02 (aprovades per l'usuari). Eventbrite descartat: robots.txt ho prohibeix.
+    {
+        "name": "Diputació de Barcelona: Turisme",
+        "type": "api",
+        "url": diba.API.format(dataset="actesturisme_ca", today="").rsplit("/", 1)[0],
+        "config": {"adapter": "diba", "dataset": "actesturisme_ca", "default_category": "cultura"},
+        "schedule_hours": 24,
+        "discovered_via": "search",
+    },
+    {
+        "name": "Diputació de Barcelona: Museus",
+        "type": "api",
+        "url": diba.API.format(dataset="actesmuseus", today="").rsplit("/", 1)[0],
+        "config": {"adapter": "diba", "dataset": "actesmuseus", "default_category": "cultura"},
+        "schedule_hours": 24,
+        "discovered_via": "search",
+    },
+    {
+        "name": "Fires Catalanes",
+        "type": "api",
+        "url": "https://firescatalanes.cat/",
+        "config": {"adapter": "tribe", "default_category": "gastronomia_social"},
+        "schedule_hours": 24,
+        "discovered_via": "search",
+    },
+    {
+        # La pàgina de meetups retorna els mateixos esdeveniments: n'hi ha prou amb aquesta.
+        "name": "dev.events: tecnologia a Barcelona",
+        "type": "web",
+        "url": "https://dev.events/EU/ES/Barcelona/tech",
+        "config": {"adapter": "jsonld", "default_category": "formacio_tech"},
+        "schedule_hours": 48,
+        "default_city": "Barcelona",
+        "discovered_via": "search",
+    },
+    {
+        "name": "Consell Esportiu de l'Anoia",
+        "type": "web",
+        "url": "https://www.ceanoia.cat/",
+        "config": {"adapter": "llm"},
+        "schedule_hours": 48,
+        "default_city": "Igualada",
+        "discovered_via": "search",
+    },
+    {
+        "name": "Tech Barcelona (agenda)",
+        "type": "web",
+        "url": "https://www.techbarcelona.com/agenda/",
+        "config": {"adapter": "llm"},
+        "schedule_hours": 48,
+        "default_city": "Barcelona",
+        "discovered_via": "search",
     },
     {
         "name": "La Veu de l'Anoia (agenda)",

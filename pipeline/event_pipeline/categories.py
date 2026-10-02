@@ -31,7 +31,8 @@ KEYWORDS: list[tuple[Category, re.Pattern]] = [
     ("gastronomia_social", re.compile(r"\b(mercat|fira|tast|gastronom|sopar|dinar|vermut|festa|ball|"
                                       r"sardana|calçotada|cercavila|correfoc|castell)", re.I)),
     ("cultura", re.compile(r"\b(concert|teatre|exposició|cinema|dansa|espectacle|lectura|òpera|"
-                           r"música|circ|recital|projecció|club de lectura|contacontes|visita)", re.I)),
+                           r"música|circ|recital|projecció|club de lectura|contacontes|visita|jazz|blues|rock|flamenc|"
+                           r"coral|orquestra|cantata|monòleg|titelles|festival)", re.I)),
 ]
 
 

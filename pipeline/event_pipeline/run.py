@@ -10,7 +10,7 @@ import traceback
 from datetime import date, datetime, timedelta
 
 from . import EXTRACTOR_VERSION
-from .adapters import bcn, gencat
+from .adapters import bcn, diba, gencat, jsonld, tribe
 from .clean import html_to_text
 from .config import TIMEZONE, load_settings
 from .extract import SourceContext, extract
@@ -55,6 +55,18 @@ def collect(source: dict, client, store: Store, settings, now: datetime) -> tupl
         return [item_from_source_event(e) for e in gencat.parse_rows(gencat.fetch(client, today, until), today, until)], 0
     if adapter == "bcn":
         return [item_from_source_event(e) for e in bcn.parse_rows(bcn.fetch(client), today, until)], 0
+    config = source.get("config") or {}
+    category = config.get("default_category", "cultura")
+    if adapter == "diba":
+        raw = diba.fetch(client, config["dataset"], today)
+        return [item_from_source_event(e) for e in diba.parse_events(raw, config["dataset"], today, until, category)], 0
+    if adapter == "tribe":
+        raw = tribe.fetch(client, source["url"], today, until)
+        name = source["url"].split("//")[-1].strip("/")
+        return [item_from_source_event(e) for e in tribe.parse_events(raw, name, today, until, category)], 0
+    if adapter == "jsonld":
+        raw = jsonld.fetch(client, source["url"])
+        return [item_from_source_event(e) for e in jsonld.parse_events(raw, "jsonld", today, until, category)], 0
     if adapter == "llm":
         page = get(client, source["url"], timeout=60).text
         text = html_to_text(page, source["url"])
@@ -120,7 +132,8 @@ def run_source(source: dict, client, store: Store, settings, now: datetime) -> N
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--all", action="store_true", help="executa totes les fonts actives, toquin o no")
-    parser.add_argument("--source", choices=["gencat", "bcn", "llm"], help="només un tipus d'adaptador")
+    parser.add_argument("--source", choices=["gencat", "bcn", "llm", "diba", "tribe", "jsonld"],
+                        help="només un tipus d'adaptador")
     parser.add_argument("--no-summaries", action="store_true", help="no generar explicacions amb Gemini")
     args = parser.parse_args()
 
