@@ -24,7 +24,17 @@ export async function sendMagicLink(_prev: LoginState, form: FormData): Promise<
     options: { shouldCreateUser: false, emailRedirectTo: `${origin}/auth/callback` },
   });
   if (error) {
-    return { status: "error", message: "No s'ha pogut enviar l'enllaç. Comprova el correu i torna-ho a provar." };
+    console.error("signInWithOtp:", error.status, error.message);
+    if (error.status === 429 || /rate limit/i.test(error.message)) {
+      return {
+        status: "error",
+        message: "Supabase només envia uns quants correus per hora i ja s'ha arribat al límit. Torna-ho a provar d'aquí a una hora.",
+      };
+    }
+    if (/signups not allowed|not found/i.test(error.message)) {
+      return { status: "error", message: "Aquest correu no té accés a l'app. Comprova que sigui el que vas registrar." };
+    }
+    return { status: "error", message: `No s'ha pogut enviar l'enllaç (${error.message}).` };
   }
   return { status: "sent" };
 }
