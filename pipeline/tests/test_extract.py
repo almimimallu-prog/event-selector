@@ -106,6 +106,19 @@ def test_overloaded_model_is_retried_then_fallback_used():
     assert len(result.events) == 1
 
 
+def test_timeout_is_retried_like_overload():
+    calls = []
+
+    def handler(request):
+        calls.append(1)
+        if len(calls) == 1:
+            raise httpx.ReadTimeout("massa lent", request=request)
+        return gemini_response([EVENT])
+
+    result, _ = run(handler)
+    assert len(calls) == 2 and len(result.events) == 1
+
+
 def test_quota_exhausted_on_all_models_raises():
     with pytest.raises(gemini.QuotaExceeded):
         run(lambda request: httpx.Response(429, json={"error": {"status": "RESOURCE_EXHAUSTED"}}))

@@ -69,8 +69,13 @@ def generate_json(
     last_error: Exception = GeminiError("cap model disponible")
     for name in models:
         for attempt in range(3):
-            response = client.post(API.format(model=name), json=body, headers={"x-goog-api-key": api_key},
-                                   timeout=timeout)
+            try:
+                response = client.post(API.format(model=name), json=body, headers={"x-goog-api-key": api_key},
+                                       timeout=timeout)
+            except httpx.TimeoutException as exc:  # model saturat que no respon: com un 503
+                last_error = GeminiError(f"{name}: temps d'espera esgotat ({exc})")
+                time.sleep(5 * (attempt + 1))
+                continue
             if response.status_code == 200:
                 return _parse(response.json(), name)
             if response.status_code == 429:
