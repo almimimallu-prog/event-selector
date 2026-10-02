@@ -44,7 +44,7 @@ function SourceRow({ source, onError }: { source: EditableSource; onError: (m: s
         </p>
         <p className="text-xs text-fg-3">
           {!active ? "Pausada" : source.last_success_at ? `Actualitzada ${when(source.last_success_at)}` : "Pendent de la primera lectura"}
-          {source.adapter === "llm" && " · llegida amb Gemini"}
+          {(source.adapter === "llm" || source.adapter === "instagram") && " · llegida amb Gemini"}
         </p>
         {active && source.consecutive_failures > 0 && source.last_error && (
           <p className="mt-0.5 line-clamp-2 text-xs text-gastro" title={source.last_error}>
@@ -80,7 +80,7 @@ export function SourcesEditor({ sources }: { sources: EditableSource[] }) {
 
       <form action={action} className="flex flex-col gap-2 border-t border-line pt-3">
         <p className="text-sm font-medium">Afegir una font</p>
-        <input name="url" type="url" required placeholder="https://… (agenda d'un web o esdeveniment d'Eventbrite)"
+        <input name="url" type="text" inputMode="url" autoCapitalize="none" required placeholder="https://… (agenda d'un web, Eventbrite) o @compte d'Instagram"
                aria-label="Enllaç de la font" className={input} />
         <div className="flex flex-wrap gap-2">
           <input name="name" placeholder="Nom (opcional)" aria-label="Nom de la font" className={`${input} min-w-40 flex-1`} />

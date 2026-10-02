@@ -41,21 +41,49 @@ async function detectAdapter(url: string, html: string): Promise<"tribe" | "json
   return "llm";
 }
 
+/** '@compte' o 'https://www.instagram.com/compte/' → 'compte' (com adapters/instagram.py). */
+function instagramHandle(text: string): string | null {
+  const m = text.match(/instagram\.com\/([A-Za-z0-9_.]+)/) ?? text.match(/^@([A-Za-z0-9_.]{1,30})$/);
+  if (!m || ["p", "reel", "reels", "stories", "explore"].includes(m[1])) return null;
+  return m[1].toLowerCase();
+}
+
 export async function addSource(_prev: FormState, form: FormData): Promise<FormState> {
   const supabase = await createClient();
   // Abans de fer cap petició a webs externes: només amb sessió iniciada.
   const { data: claims } = await supabase.auth.getClaims();
   if (!claims) return { status: "error", message: "La sessió ha caducat. Torna a entrar." };
-  let url: URL;
-  try {
-    url = new URL(String(form.get("url") ?? "").trim());
-    if (!/^https?:$/.test(url.protocol)) throw new Error();
-  } catch {
-    return { status: "error", message: "Escriu un enllaç complet (https://…)." };
-  }
+  const raw = String(form.get("url") ?? "").trim();
   const cityInput = String(form.get("city") ?? "").trim();
   const city = cityInput ? findMunicipality(cityInput) : undefined;
   if (cityInput && !city) return { status: "error", message: "No trobo aquest municipi. Tria'l de la llista o deixa-ho buit." };
+
+  // Instagram: API oficial de Meta (Business Discovery) des del pipeline; només comptes professionals.
+  const handle = instagramHandle(raw);
+  if (handle) {
+    const label = String(form.get("name") ?? "").trim();
+    const { error } = await supabase.from("sources").insert({
+      name: `Instagram: @${handle}${label ? ` (${label})` : ""}`,
+      type: "instagram",
+      handle,
+      url: `https://www.instagram.com/${handle}/`,
+      config: { adapter: "instagram" },
+      schedule_hours: 12,
+      default_city: city?.name ?? null,
+      discovered_via: "manual",
+    });
+    if (error) return { status: "error", message: error.code === "23505" ? "Ja segueixes aquest compte." : error.message };
+    revalidatePath("/configuracio");
+    return { status: "ok", message: `@${handle} afegit. Si no és un compte professional, ho veuràs com a error a la llista.` };
+  }
+
+  let url: URL;
+  try {
+    url = new URL(raw);
+    if (!/^https?:$/.test(url.protocol)) throw new Error();
+  } catch {
+    return { status: "error", message: "Escriu un enllaç complet (https://…) o un compte d'Instagram (@compte)." };
+  }
 
   // Eventbrite: el web prohibeix la lectura automàtica; es fa servir l'API oficial, que necessita el token
   // del pipeline. Es desa l'enllaç i el pipeline en busca l'organitzador a la propera execució.

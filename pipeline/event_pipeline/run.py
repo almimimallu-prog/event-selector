@@ -12,11 +12,12 @@ import traceback
 from datetime import date, datetime, timedelta
 
 from . import EXTRACTOR_VERSION
-from .adapters import bcn, diba, eventbrite, gencat, jsonld, tribe
+from .adapters import bcn, diba, eventbrite, gencat, instagram, jsonld, tribe
 from .clean import html_to_text
 from .geo import DEFAULT_ZONES, Zone
 from .config import TIMEZONE, load_settings
 from .extract import SourceContext, extract
+from .gemini import Attachment
 from .gemini import QuotaExceeded
 from .http import get, make_client
 from .sources import SEED_SOURCES, content_hash, item_from_extracted, item_from_source_event
@@ -27,6 +28,9 @@ HORIZON_DAYS = 60
 BATCH = 200
 # Reintents després d'errors seguits: 1 h, 6 h, 24 h.
 BACKOFF_HOURS = [1, 6, 24]
+# Instagram: només publicacions recents i, com a molt, unes quantes per crida a Gemini (una crida per compte).
+INSTAGRAM_MAX_AGE_DAYS = 30
+INSTAGRAM_MAX_POSTS = 6
 
 
 def ensure_seed_sources(store: Store) -> None:
@@ -118,7 +122,44 @@ def collect(source: dict, client, store: Store, settings, now: datetime, zones=D
                                    "content_hash": page_hash, "payload": {"chars": len(text)}, "status": "done",
                                    "extractor_version": EXTRACTOR_VERSION}, on_conflict="source_id,external_id")
         return items, 1
+    if adapter == "instagram":
+        return collect_instagram(source, client, store, settings, now)
     raise ValueError(f"Adaptador desconegut: {adapter!r}")
+
+
+def collect_instagram(source: dict, client, store: Store, settings, now: datetime) -> tuple[list[dict] | None, int]:
+    token, ig_user_id = os.getenv("INSTAGRAM_TOKEN"), os.getenv("INSTAGRAM_USER_ID")
+    if not token or not ig_user_id:
+        raise RuntimeError("Falten INSTAGRAM_TOKEN / INSTAGRAM_USER_ID (python -m event_pipeline.manage instagram-setup)")
+    posts = instagram.fetch_posts(client, token, ig_user_id, source["handle"])
+    recent = [p for p in posts if (now - p.timestamp).days <= INSTAGRAM_MAX_AGE_DAYS]
+    ids = ",".join(f'"post:{p.id}"' for p in recent)
+    seen = {r["external_id"] for r in store.select("raw_items", select="external_id", source_id=f"eq.{source['id']}",
+                                                     external_id=f"in.({ids})")} if recent else set()
+    new = [p for p in recent if f"post:{p.id}" not in seen][:INSTAGRAM_MAX_POSTS]
+    if not new:
+        return None, 0  # cap publicació nova: no gastem quota de Gemini
+    attachments = []
+    for post in new:
+        for url in post.image_urls:
+            try:
+                response = get(client, url, timeout=30, attempts=2)
+                attachments.append(Attachment(response.headers.get("content-type", "image/jpeg").split(";")[0],
+                                              response.content))
+            except Exception as exc:  # una imatge que no es baixa no ha d'aturar la resta
+                print(f"  · imatge de {post.permalink} no disponible ({exc})")
+    context = SourceContext(source["name"], source.get("url"), source.get("default_city"))
+    result, usage = extract(client, settings.gemini_api_key, instagram.posts_prompt(new), context, now,
+                            attachments=tuple(attachments))
+    record_llm_usage(store, usage)
+    items = [i for i in (item_from_extracted(e, source, now) for e in result.events) if i]
+    # Les publicacions es marquen com a llegides al final: si l'extracció falla, es tornen a provar.
+    store.insert("raw_items", [{"source_id": source["id"], "external_id": f"post:{p.id}", "url": p.permalink,
+                                "content_hash": content_hash({"caption": p.caption, "extractor": EXTRACTOR_VERSION}),
+                                "payload": {"caption": p.caption[:2000], "published": p.timestamp.isoformat()},
+                                "status": "done", "extractor_version": EXTRACTOR_VERSION} for p in new],
+                 on_conflict="source_id,external_id")
+    return items, 1
 
 
 def run_source(source: dict, client, store: Store, settings, now: datetime, zones=DEFAULT_ZONES) -> bool:
@@ -168,7 +209,7 @@ def run_source(source: dict, client, store: Store, settings, now: datetime, zone
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--all", action="store_true", help="executa totes les fonts actives, toquin o no")
-    parser.add_argument("--source", choices=["gencat", "bcn", "llm", "diba", "tribe", "jsonld", "eventbrite"],
+    parser.add_argument("--source", choices=["gencat", "bcn", "llm", "diba", "tribe", "jsonld", "eventbrite", "instagram"],
                         help="només un tipus d'adaptador")
     parser.add_argument("--no-summaries", action="store_true", help="no generar explicacions amb Gemini")
     args = parser.parse_args()
@@ -185,6 +226,12 @@ def main() -> None:
         sources = store.select("sources", **filters)
         if args.source:
             sources = [s for s in sources if (s.get("config") or {}).get("adapter") == args.source]
+        # Sense accés a Instagram configurat, aquestes fonts s'esperen (no compten com a errors).
+        if not (os.getenv("INSTAGRAM_TOKEN") and os.getenv("INSTAGRAM_USER_ID")):
+            waiting = [s for s in sources if (s.get("config") or {}).get("adapter") == "instagram"]
+            if waiting:
+                print(f"· Instagram: {len(waiting)} comptes en espera (falta instagram-setup)")
+                sources = [s for s in sources if s not in waiting]
         if not sources:
             print("Cap font per executar ara.")
         results = [run_source(source, client, store, settings, now, zones) for source in sources]

@@ -45,6 +45,11 @@ Després, a **Authentication → Sign In / Providers**, desactiva *Allow new use
 - **Zones i fonts**: s'editen a l'app (Configuració). Una font nova es comprova contra el `robots.txt` i se'n tria
   l'adaptador (WordPress/The Events Calendar, schema.org/Event o Gemini); les d'Eventbrite les completa el pipeline
   amb l'API. També des de la terminal: `python -m event_pipeline.manage eventbrite-add <enllaç>` (des de `pipeline/`).
+- **Instagram**: API oficial de Meta (*Business Discovery*), només comptes professionals; Gemini llegeix el text i el
+  cartell de les publicacions noves (una crida per compte). Cal un compte d'Instagram professional propi vinculat a una
+  pàgina de Facebook i una app de Meta en mode desenvolupament; `python -m event_pipeline.manage instagram-setup` desa
+  `INSTAGRAM_TOKEN` i `INSTAGRAM_USER_ID` a `pipeline/.env` (cal copiar-los també als Secrets de GitHub). Els comptes
+  s'afegeixen a l'app (Configuració → Fonts, `@compte`) o amb `instagram-add`.
 
 ## Seguretat
 El repositori és **públic**: cap clau, llista de fonts ni compte va al codi. Les claus van a `.env` / `.env.local`
