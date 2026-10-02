@@ -25,7 +25,10 @@ class ExtractedEvent(BaseModel):
     title: str = Field(min_length=3, max_length=200)
     start: datetime = Field(description="Inici en ISO 8601, zona Europe/Madrid")
     end: datetime | None = None
-    all_day: bool = False
+    all_day: bool = Field(default=False, description="Cert si no se'n coneix l'hora")
+    kind: Kind = "session"
+    detail_url: str | None = Field(default=None, description="Enllaç a la fitxa de l'esdeveniment, si n'hi ha")
+    image_url: str | None = None
     venue_name: str | None = None
     address: str | None = None
     city: str | None = None
