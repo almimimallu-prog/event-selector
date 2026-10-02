@@ -14,6 +14,7 @@ from datetime import date, datetime, timedelta
 from . import EXTRACTOR_VERSION
 from .adapters import bcn, diba, eventbrite, gencat, jsonld, tribe
 from .clean import html_to_text
+from .geo import DEFAULT_ZONES, Zone
 from .config import TIMEZONE, load_settings
 from .extract import SourceContext, extract
 from .gemini import QuotaExceeded
@@ -37,6 +38,29 @@ def ensure_seed_sources(store: Store) -> None:
         print(f"Fonts llavor afegides: {', '.join(s['name'] for s in missing)}")
 
 
+def load_zones(store: Store) -> tuple[Zone, ...]:
+    """Zones actives editades des de l'app (Configuració). Si no se'n poden llegir, les per defecte."""
+    try:
+        rows = store.rpc("zone_list", {}, timeout=60)
+    except Exception as exc:  # p. ex. migració 20261004000000_zone_list.sql encara no aplicada
+        print(f"· Zones: no s'han pogut llegir ({exc}); es fan servir les per defecte")
+        return DEFAULT_ZONES
+    zones = tuple(Zone(r["name"], r["lat"], r["lon"], float(r["radius_km"])) for r in rows if r["active"])
+    return zones or DEFAULT_ZONES
+
+
+def resolve_eventbrite(source: dict, client, store: Store, token: str) -> str:
+    """Les fonts d'Eventbrite afegides des de l'app només porten l'enllaç: se'n busca l'organitzador."""
+    config = source.get("config") or {}
+    ident, name, page = eventbrite.resolve_organizer(client, token, config.get("pending_url") or source["url"])
+    if page != source["url"] and store.select("sources", select="id", url=f"eq.{page}"):
+        raise eventbrite.EventbriteError(f"Ja segueixes aquest organitzador ({name}): pots esborrar aquesta font")
+    config = {k: v for k, v in config.items() if k != "pending_url"} | {"organizer_id": ident}
+    store.update("sources", {"name": f"Eventbrite: {name}", "url": page, "config": config}, id=f"eq.{source['id']}")
+    source.update(name=f"Eventbrite: {name}", url=page, config=config)
+    return ident
+
+
 def record_llm_usage(store: Store, usage) -> None:
     provider = "gemini"
     today = date.today().isoformat()
@@ -49,32 +73,33 @@ def record_llm_usage(store: Store, usage) -> None:
     }, on_conflict="day,provider")
 
 
-def collect(source: dict, client, store: Store, settings, now: datetime) -> tuple[list[dict] | None, int]:
+def collect(source: dict, client, store: Store, settings, now: datetime, zones=DEFAULT_ZONES) -> tuple[list[dict] | None, int]:
     """(items per ingerir o None si la font no ha canviat, crides a l'LLM)."""
     adapter = (source.get("config") or {}).get("adapter")
     today, until = now.date(), now.date() + timedelta(days=HORIZON_DAYS)
     if adapter == "gencat":
-        return [item_from_source_event(e) for e in gencat.parse_rows(gencat.fetch(client, today, until), today, until)], 0
+        return [item_from_source_event(e) for e in gencat.parse_rows(gencat.fetch(client, today, until, zones), today, until, zones)], 0
     if adapter == "bcn":
-        return [item_from_source_event(e) for e in bcn.parse_rows(bcn.fetch(client), today, until)], 0
+        return [item_from_source_event(e) for e in bcn.parse_rows(bcn.fetch(client), today, until, zones)], 0
     config = source.get("config") or {}
     category = config.get("default_category", "cultura")
     if adapter == "diba":
         raw = diba.fetch(client, config["dataset"], today)
-        return [item_from_source_event(e) for e in diba.parse_events(raw, config["dataset"], today, until, category)], 0
+        return [item_from_source_event(e) for e in diba.parse_events(raw, config["dataset"], today, until, category, zones)], 0
     if adapter == "tribe":
         raw = tribe.fetch(client, source["url"], today, until)
         name = source["url"].split("//")[-1].strip("/")
-        return [item_from_source_event(e) for e in tribe.parse_events(raw, name, today, until, category)], 0
+        return [item_from_source_event(e) for e in tribe.parse_events(raw, name, today, until, category, zones)], 0
     if adapter == "jsonld":
         raw = jsonld.fetch(client, source["url"])
-        return [item_from_source_event(e) for e in jsonld.parse_events(raw, "jsonld", today, until, category)], 0
+        return [item_from_source_event(e) for e in jsonld.parse_events(raw, "jsonld", today, until, category, zones)], 0
     if adapter == "eventbrite":
         token = os.getenv("EVENTBRITE_TOKEN")
         if not token:
             raise RuntimeError("Falta EVENTBRITE_TOKEN")
-        raw = eventbrite.fetch_organizer(client, token, config["organizer_id"])
-        return [item_from_source_event(e) for e in eventbrite.parse_events(raw, today, until, category)], 0
+        organizer_id = config.get("organizer_id") or resolve_eventbrite(source, client, store, token)
+        raw = eventbrite.fetch_organizer(client, token, organizer_id)
+        return [item_from_source_event(e) for e in eventbrite.parse_events(raw, today, until, category, zones)], 0
     if adapter == "llm":
         page = get(client, source["url"], timeout=60).text
         text = html_to_text(page, source["url"])
@@ -96,11 +121,11 @@ def collect(source: dict, client, store: Store, settings, now: datetime) -> tupl
     raise ValueError(f"Adaptador desconegut: {adapter!r}")
 
 
-def run_source(source: dict, client, store: Store, settings, now: datetime) -> bool:
+def run_source(source: dict, client, store: Store, settings, now: datetime, zones=DEFAULT_ZONES) -> bool:
     """True si ha anat bé. Els errors queden a scrape_runs i a la salut de la font."""
     [run] = store.insert("scrape_runs", {"source_id": source["id"]})
     try:
-        items, llm_calls = collect(source, client, store, settings, now)
+        items, llm_calls = collect(source, client, store, settings, now, zones)
         totals = {"unchanged": 0, "created": 0, "merged": 0, "updated": 0, "possible_duplicates": 0}
         if items is None:
             status = "not_modified"
@@ -153,6 +178,7 @@ def main() -> None:
     with make_client() as client:
         store = Store(client, settings.supabase_url, settings.supabase_service_role_key)
         ensure_seed_sources(store)
+        zones = load_zones(store)
         filters = {"status": "eq.active", "order": "next_run_at"}
         if not (args.all or args.source):
             filters["next_run_at"] = f"lte.{now.isoformat()}"
@@ -161,7 +187,7 @@ def main() -> None:
             sources = [s for s in sources if (s.get("config") or {}).get("adapter") == args.source]
         if not sources:
             print("Cap font per executar ara.")
-        results = [run_source(source, client, store, settings, now) for source in sources]
+        results = [run_source(source, client, store, settings, now, zones) for source in sources]
         if not args.no_summaries:
             try:
                 done = summarize.run(client, store, settings.gemini_api_key, now, record_llm_usage)

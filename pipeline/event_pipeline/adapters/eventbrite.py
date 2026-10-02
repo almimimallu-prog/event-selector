@@ -46,6 +46,25 @@ def fetch_event(client: httpx.Client, token: str, event_id: str) -> dict:
     return _get(client, token, f"/events/{event_id}/", expand="venue,category")
 
 
+def resolve_organizer(client: httpx.Client, token: str, url: str) -> tuple[str, str, str]:
+    """(id, nom, pàgina) de l'organitzador d'un enllaç d'organitzador o d'esdeveniment."""
+    parsed = parse_url(url)
+    if not parsed:
+        raise EventbriteError("No és un enllaç d'Eventbrite reconegut (/o/… d'organitzador o /e/… d'esdeveniment)")
+    kind, ident = parsed
+    event_title = None
+    if kind == "event":
+        event = fetch_event(client, token, ident)
+        ident = event.get("organizer_id")
+        if not ident:
+            raise EventbriteError("Aquest esdeveniment no indica organitzador")
+        event_title = event["name"]["text"].strip()
+    organizer = _get(client, token, f"/organizers/{ident}/")
+    # Alguns organitzadors no tenen nom al perfil: es fa servir el títol de l'esdeveniment per reconèixer-lo.
+    name = organizer.get("name") or (f"organitzador de «{event_title}»" if event_title else f"organitzador {ident}")
+    return ident, name, organizer.get("url") or f"https://www.eventbrite.com/o/{ident}"
+
+
 def fetch_organizer(client: httpx.Client, token: str, organizer_id: str) -> list[dict]:
     events = []
     for page in range(1, MAX_PAGES + 1):

@@ -42,7 +42,9 @@ Després, a **Authentication → Sign In / Providers**, desactiva *Allow new use
 - **Pipeline**: GitHub Actions (`.github/workflows/pipeline.yml`) cada 6 hores, o a mà des de la pestanya
   Actions → Pipeline → Run workflow. Secrets: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`,
   `EVENTBRITE_TOKEN`.
-- **Fonts d'Eventbrite**: `python -m event_pipeline.manage eventbrite-add <enllaç>` (des de `pipeline/`).
+- **Zones i fonts**: s'editen a l'app (Configuració). Una font nova es comprova contra el `robots.txt` i se'n tria
+  l'adaptador (WordPress/The Events Calendar, schema.org/Event o Gemini); les d'Eventbrite les completa el pipeline
+  amb l'API. També des de la terminal: `python -m event_pipeline.manage eventbrite-add <enllaç>` (des de `pipeline/`).
 
 ## Seguretat
 El repositori és **públic**: cap clau, llista de fonts ni compte va al codi. Les claus van a `.env` / `.env.local`
