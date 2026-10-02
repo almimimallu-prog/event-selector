@@ -66,3 +66,31 @@ class ExtractedEvent(BaseModel):
 
 class ExtractionResult(BaseModel):
     events: list[ExtractedEvent] = Field(default_factory=list)
+
+
+class SourceEvent(BaseModel):
+    """Esdeveniment ja estructurat que surt d'un adaptador (API, ICS, JSON-LD) sense passar per l'LLM."""
+
+    source: str                         # 'gencat' | 'bcn' | ...
+    external_id: str                    # estable entre execucions (inclou la data si és una sessió d'un cicle)
+    title: str
+    start: datetime
+    end: datetime | None = None
+    all_day: bool = False
+    long_running: bool = False          # exposicions i similars: de dia X a dia Y, sense sessions concretes
+    venue_name: str | None = None
+    address: str | None = None
+    city: str | None = None
+    lat: float | None = None
+    lon: float | None = None
+    price_min: float | None = None
+    is_free: bool | None = None
+    price_text: str | None = None
+    registration_url: str | None = None
+    url: str | None = None
+    image_url: str | None = None
+    category: Category
+    category_guessed: bool = False      # cap etiqueta ni paraula clau: s'ha posat la categoria per defecte
+    tags: list[str] = Field(default_factory=list)
+    description: str | None = None
+    series_key: str | None = None
