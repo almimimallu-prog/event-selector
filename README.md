@@ -34,6 +34,16 @@ cp .env.example .env         # i omple els valors
 Aplica els fitxers de `supabase/migrations/` per ordre (Supabase → SQL Editor, o `supabase db push` amb la CLI).
 Després, a **Authentication → Sign In / Providers**, desactiva *Allow new users to sign up*: l'app és d'un sol usuari.
 
+## Publicació i automatització
+
+- **Web**: Vercel, projecte `event-selector`, *Root Directory* = `web`, regió `fra1` (`web/vercel.json`).
+  Variables: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Cada push a `main` publica.
+  Cal afegir l'adreça de Vercel a Supabase → Authentication → URL Configuration (Redirect URLs).
+- **Pipeline**: GitHub Actions (`.github/workflows/pipeline.yml`) cada 6 hores, o a mà des de la pestanya
+  Actions → Pipeline → Run workflow. Secrets: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`,
+  `EVENTBRITE_TOKEN`.
+- **Fonts d'Eventbrite**: `python -m event_pipeline.manage eventbrite-add <enllaç>` (des de `pipeline/`).
+
 ## Seguretat
 El repositori és **públic**: cap clau, llista de fonts ni compte va al codi. Les claus van a `.env` / `.env.local`
 (ignorats per git) i als *Secrets* de GitHub; les fonts viuen a Supabase.
