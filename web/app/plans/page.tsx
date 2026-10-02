@@ -1,6 +1,7 @@
 import { EventBrowser } from "@/components/event-browser";
 import { loadEvents, loadSettings } from "@/lib/data";
 import { addDays, madridMidnight, todayKey } from "@/lib/dates";
+import { readLocalOnly } from "@/lib/local-mode-server";
 import { createClient } from "@/lib/supabase/server";
 import type { Kind } from "@/lib/types";
 
@@ -20,6 +21,6 @@ export default async function PlansPage() {
   return (
     <EventBrowser mode="list" title="Els meus plans" sort="date"
                   emptyText="Encara no has marcat res. Fes servir ⭐ M'interessa o ✅ Hi vaig a qualsevol esdeveniment."
-                  events={lists.flat()} prefs={prefs} zones={zones} />
+                  events={lists.flat()} prefs={prefs} zones={zones} initialLocalOnly={await readLocalOnly()} />
   );
 }

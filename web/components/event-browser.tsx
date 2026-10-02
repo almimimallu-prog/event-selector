@@ -1,10 +1,11 @@
 "use client";
 
-import { CheckCircle2, ChevronLeft, ChevronRight, MapPin, Search, Star } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, House, MapPin, Search, Star } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DISMISS_REASONS } from "@/lib/categories";
 import { MONTHS_SHORT, WEEKDAYS_SHORT, addDays, dayLabel, local } from "@/lib/dates";
+import { LOCAL_COOKIE, LOCAL_RADIUS_KM, homeZone, isNearHome, ofPlace } from "@/lib/local-mode";
 import { score as computeScore, type Score } from "@/lib/ranking";
 import type { AppEvent, Prefs, Zone } from "@/lib/types";
 import { AppNav, Brand } from "./app-nav";
@@ -21,6 +22,8 @@ type Props = (CalendarProps | ListProps) & {
   events: AppEvent[];
   prefs: Prefs;
   zones: Zone[];
+  /** Mode "Sense sortir d'Igualada" (llegit de la galeta al servidor). */
+  initialLocalOnly?: boolean;
   demo?: boolean;
 };
 
@@ -33,6 +36,8 @@ export function EventBrowser(props: Props) {
   const [day, setDay] = useState(props.mode === "calendar" ? props.initialDay : "");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [zoneOff, setZoneOff] = useState<Set<string>>(new Set());
+  const [localOnly, setLocalOnly] = useState(!!props.initialLocalOnly);
+  const home = homeZone(zones);
   const [query, setQuery] = useState("");
   const [reasonsOpen, setReasonsOpen] = useState(false);
   const [showDetail, setShowDetail] = useState(false); // mòbil: la fitxa substitueix la llista
@@ -49,10 +54,19 @@ export function EventBrowser(props: Props) {
     return events.filter(
       (e) =>
         e.user_state !== "dismissed" &&
-        !(e.zone_name && zoneOff.has(e.zone_name)) &&
+        (localOnly && home ? isNearHome(e, home) : !(e.zone_name && zoneOff.has(e.zone_name))) &&
         (!q || [e.title, e.venue_name, e.city, ...e.tags].join(" ").toLowerCase().includes(q)),
     );
-  }, [events, query, zoneOff]);
+  }, [events, query, zoneOff, localOnly, home]);
+
+  function toggleLocalOnly() {
+    const next = !localOnly;
+    setLocalOnly(next);
+    setSelectedId(null);
+    document.cookie = next
+      ? `${LOCAL_COOKIE}=1; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`
+      : `${LOCAL_COOKIE}=; path=/; max-age=0; samesite=lax`;
+  }
 
   const byDay = useMemo(() => {
     const map = new Map<string, AppEvent[]>();
@@ -165,7 +179,14 @@ export function EventBrowser(props: Props) {
           <Brand />
           <AppNav />
           <div className="flex flex-wrap gap-1.5">
-            {zones.filter((z) => z.active).map((z) => {
+            {home && (
+              <button type="button" aria-pressed={localOnly} onClick={toggleLocalOnly}
+                      title={`Només el que passa a menys de ${LOCAL_RADIUS_KM} km del centre de ${home.name}`}
+                      className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[13px] font-semibold ${localOnly ? "border-transparent bg-accent text-surface" : "border-line bg-surface text-fg-2"}`}>
+                <House size={14} /> Sense sortir {ofPlace(home.name)}
+              </button>
+            )}
+            {!localOnly && zones.filter((z) => z.active).map((z) => {
               const on = !zoneOff.has(z.name);
               return (
                 <button key={z.id} type="button" aria-pressed={on}

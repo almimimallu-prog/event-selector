@@ -1,6 +1,7 @@
 import { EventBrowser } from "@/components/event-browser";
 import { loadEvents, loadSettings } from "@/lib/data";
 import { addDays, madridMidnight, todayKey } from "@/lib/dates";
+import { readLocalOnly } from "@/lib/local-mode-server";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata = { title: "Exposicions · Event Selector" };
@@ -15,6 +16,6 @@ export default async function ExhibitionsPage() {
   ]);
   return (
     <EventBrowser mode="list" title="Exposicions i activitats en curs" sort="score"
-                  emptyText="No hi ha exposicions en curs a les teves zones." events={events} prefs={prefs} zones={zones} />
+                  emptyText="No hi ha exposicions en curs a les teves zones." events={events} prefs={prefs} zones={zones} initialLocalOnly={await readLocalOnly()} />
   );
 }
