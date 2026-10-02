@@ -2,8 +2,10 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { createClient as createServerClient } from "@/lib/supabase/server";
 
-export type LoginState = { status: "idle" | "sent" | "error"; message?: string };
+export type LoginState = { status: "idle" | "sent" | "error"; message?: string; email?: string };
 
 export async function sendMagicLink(_prev: LoginState, form: FormData): Promise<LoginState> {
   const email = String(form.get("email") ?? "").trim();
@@ -37,4 +39,24 @@ export async function sendMagicLink(_prev: LoginState, form: FormData): Promise<
     return { status: "error", message: `No s'ha pogut enviar l'enllaç (${error.message}).` };
   }
   return { status: "sent" };
+}
+
+export async function signInWithPassword(_prev: LoginState, form: FormData): Promise<LoginState> {
+  const email = String(form.get("email") ?? "").trim();
+  const password = String(form.get("password") ?? "");
+  if (!email || !password) return { status: "error", message: "Escriu el correu i la contrasenya." };
+  const supabase = await createServerClient();
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
+    console.error("signInWithPassword:", error.status, error.message);
+    if (/invalid login credentials/i.test(error.message)) {
+      return {
+        status: "error",
+        email,
+        message: "Correu o contrasenya incorrectes. Si encara no has creat la contrasenya, entra amb l'enllaç i crea-la a Configuració.",
+      };
+    }
+    return { status: "error", email, message: `No s'ha pogut entrar (${error.message}).` };
+  }
+  redirect("/");
 }

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AppNav, Brand } from "@/components/app-nav";
 import { loadSettings } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
+import { PasswordForm } from "./password-form";
 
 export const metadata = { title: "Configuració · Event Selector" };
 
@@ -64,6 +65,14 @@ export default async function SettingsPage() {
             </li>
           ))}
         </ul>
+      </section>
+
+      <section className="rounded-2xl border border-line bg-surface p-5">
+        <h2 className="mb-1 font-semibold">Contrasenya</h2>
+        <p className="mb-3 text-sm text-fg-2">
+          Amb una contrasenya pots entrar sense esperar el correu (Supabase només n&apos;envia uns quants per hora).
+        </p>
+        <PasswordForm email={String(claims.data?.claims?.email ?? "")} />
       </section>
 
       <form action={signOut} className="flex flex-wrap items-center justify-between gap-3 text-sm text-fg-2">
