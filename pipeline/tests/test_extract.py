@@ -134,3 +134,19 @@ def test_bad_request_is_not_retried():
     with pytest.raises(gemini.GeminiError):
         run(handler)
     assert len(calls) == 1
+
+
+def test_summaries_only_for_known_ids_and_null_becomes_empty():
+    from event_pipeline import summarize
+
+    events = [{"id": "a", "title": "Göteborg", "category": "cultura", "description": "Comèdia de Jordi Casanovas."},
+              {"id": "b", "title": "XYZ", "category": "cultura"}]
+
+    def handler(request):
+        body = {"items": [{"id": "a", "summary_ca": "Comèdia teatral de Jordi Casanovas"},
+                          {"id": "b", "summary_ca": None}, {"id": "intrús", "summary_ca": "?"}]}
+        return httpx.Response(200, json={"candidates": [{"content": {"parts": [{"text": json.dumps(body)}]}}]})
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        result, _ = summarize.summarize_batch(client, "clau", events)
+    assert result == {"a": "Comèdia teatral de Jordi Casanovas", "b": ""}

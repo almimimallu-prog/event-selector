@@ -11,7 +11,7 @@ import { googleCalendarUrl, mapsUrl } from "@/lib/links";
 import { SCORE_PARTS, nearestZoneLabel, type Score } from "@/lib/ranking";
 import { createClient } from "@/lib/supabase/client";
 import type { AppEvent, DismissReason } from "@/lib/types";
-import { CategoryChip, priceLabel } from "./event-row";
+import { CategoryChip, explanation, priceLabel } from "./event-row";
 
 const btn = "inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm font-medium hover:bg-surface-2";
 const Kbd = ({ k }: { k: string }) => (
@@ -181,11 +181,11 @@ export function EventDetail(props: Props) {
           </div>
         )}
 
-        {(event.summary_ca || event.description) && (
+        {(explanation(event) || event.description) && (
           <section>
-            <h3 className="mb-2 text-[11px] font-semibold tracking-[0.08em] text-fg-3 uppercase">Resum</h3>
-            <p className="text-sm">{event.summary_ca ?? event.description?.slice(0, 280)}</p>
-            {event.summary_ca && event.description && (
+            <h3 className="mb-2 text-[11px] font-semibold tracking-[0.08em] text-fg-3 uppercase">Què és</h3>
+            <p className="text-sm">{explanation(event) ?? event.description?.slice(0, 280)}</p>
+            {event.description && (
               <details className="mt-2 text-sm text-fg-2">
                 <summary className="cursor-pointer text-fg-3">Descripció original</summary>
                 <p className="mt-1 whitespace-pre-line">{event.description}</p>

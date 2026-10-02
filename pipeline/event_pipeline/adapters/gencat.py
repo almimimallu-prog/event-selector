@@ -147,7 +147,10 @@ def parse_rows(rows: list[dict], today: date, until: date, zones=DEFAULT_ZONES) 
                 image_url=_image(row),
                 category=category,
                 tags=tags,
-                description=(row.get("descripcio") or "").strip()[:2000] or None,
+                # El subtítol no sempre explica res ("Cia. La Cabuda", frases de crítica): va davant de la
+                # descripció i l'explicació curta la fa summarize.py.
+                description="\n\n".join(p for p in ((row.get("subt_tol") or "").strip(),
+                                                    (row.get("descripcio") or "").strip()) if p)[:2000] or None,
                 series_key=f"gencat:{row['codi']}:{place}" if multi else None,
             ))
     return events

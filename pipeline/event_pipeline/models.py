@@ -100,4 +100,5 @@ class SourceEvent(BaseModel):
     category_guessed: bool = False      # cap etiqueta ni paraula clau: s'ha posat la categoria per defecte
     tags: list[str] = Field(default_factory=list)
     description: str | None = None
+    summary_ca: str | None = None
     series_key: str | None = None

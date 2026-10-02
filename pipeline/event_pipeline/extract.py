@@ -28,7 +28,9 @@ Rules:
   courses, conferences, technology), gastronomia_social (markets, fairs, food, popular festivals, social).
 - price_min: lowest price in euros; is_free=true only if explicitly free.
 - detail_url / image_url: copy the URLs from the markdown links/images belonging to that event, if any.
-- summary_ca: max 2 short lines in Catalan, factual, no marketing tone.
+- summary_ca: one short line in Catalan (max 120 characters) saying what kind of activity it is and the key
+  detail ("Comèdia teatral de Jordi Casanovas", "Concert de jazz manouche"). No marketing tone, and do not
+  repeat the title, date, time, price or place.
 - tags: up to 5 short lowercase Catalan tags (e.g. "infantil", "música", "visita guiada").
 - is_event=false for items that are not attendable events (news, ads, generic opening hours).
 - confidence: 0-1, how sure you are that date, place and title are correct.

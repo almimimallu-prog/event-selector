@@ -46,6 +46,14 @@ export function whenLabel(event: AppEvent, withDate = false): string {
   return withDate ? `${shortDate(event.start_at)} · ${time}` : time;
 }
 
+/** "Què és?": l'explicació curta o, si no n'hi ha, la primera frase de la descripció. */
+export function explanation(event: AppEvent): string | null {
+  if (event.summary_ca?.trim()) return event.summary_ca.trim();
+  const first = event.description?.trim().split(/(?<=[.!?])\s/)[0];
+  if (!first) return null;
+  return first.length > 140 ? `${first.slice(0, 137).trimEnd()}…` : first;
+}
+
 export function priceLabel(event: AppEvent): string | null {
   if (event.is_free) return "Gratuït";
   if (event.price_min != null) return `${Number(event.price_min).toLocaleString("ca")} €`;
@@ -65,6 +73,7 @@ export function EventRow({ event, score, selected, onSelect, withDate }: Props) 
   const where = [event.venue_name, event.city].filter(Boolean).join(", ");
   const km = nearestZoneLabel(event);
   const price = priceLabel(event);
+  const explain = explanation(event);
   return (
     <button
       type="button"
@@ -84,7 +93,8 @@ export function EventRow({ event, score, selected, onSelect, withDate }: Props) 
           {event.status === "maybe_cancelled" && <span className="text-gastro">[Cancel·lat?] </span>}
           {event.title}
         </div>
-        <div className="flex min-w-0 items-center gap-2 text-xs text-fg-3">
+        {explain && <p className="line-clamp-1 text-[13px] text-fg-2">{explain}</p>}
+        <div className="mt-0.5 flex min-w-0 items-center gap-2 text-xs text-fg-3">
           <CategoryChip event={event} />
           <span className="truncate">{[where, km].filter(Boolean).join(" · ")}</span>
         </div>

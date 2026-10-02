@@ -104,7 +104,7 @@ def item_from_source_event(event: SourceEvent) -> dict:
         **{k: payload[k] for k in (
             "external_id", "title", "all_day", "kind", "schedule_text", "venue_name", "address", "city", "lat",
             "lon", "price_min", "is_free", "price_text", "registration_url", "url", "image_url", "category",
-            "tags", "description", "series_key")},
+            "tags", "description", "summary_ca", "series_key")},
         "start": _iso(event.start),
         "end": _iso(event.end),
         "content_hash": content_hash(payload),

@@ -25,6 +25,15 @@ const SAMPLES: [string, Category, string, string, number, string | null][] = [
   ["Taller de fotografia mòbil", "formacio_tech", "Espai Cívic Centre", "Igualada", 2, null],
 ];
 
+const SUMMARIES = [
+  "Concert de jazz manouche amb repertori de Django Reinhardt",
+  "Xerrada divulgativa sobre eines d'IA per a la vida quotidiana",
+  "Excursió de 14 km amb 750 m de desnivell per la cara nord",
+  "Mostra de cellers de l'Anoia amb tast guiat i música en directe",
+  "Presentació del segon disc d'una banda indie emergent",
+  "",
+];
+
 export default function DevPreview() {
   if (process.env.NODE_ENV !== "development") notFound();
   const start = weekStart(todayKey());
@@ -35,7 +44,7 @@ export default function DevPreview() {
       const hour = d >= 5 ? 10 + i * 2 : 17 + (i % 5);
       const startAt = new Date(madridMidnight(addDays(start, d)).getTime() + hour * 3_600_000);
       events.push({
-        id: `${d}-${i}`, title, summary_ca: "Esdeveniment de mostra per provar la interfície.", description: null,
+        id: `${d}-${i}`, title, summary_ca: SUMMARIES[i], description: null,
         start_at: startAt.toISOString(), end_at: null, all_day: i === 2 && d === 6, kind: "session", schedule_text: null,
         category, tags: [], price_min: null, price_text: price, is_free: price === null, registration_url: null,
         registration_deadline: null, url: null, image_url: null, series_key: null,
