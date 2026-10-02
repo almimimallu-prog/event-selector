@@ -38,7 +38,9 @@ def fetch(client: httpx.Client) -> list[dict]:
 
 def parse_csv(content: bytes) -> list[dict]:
     text = content.decode("utf-16") if content[:2] in (b"\xff\xfe", b"\xfe\xff") else content.decode("utf-8-sig")
-    return list(csv.DictReader(io.StringIO(text)))
+    # Alguns valors (register_id) porten un BOM enganxat: fora.
+    return [{k.lstrip("﻿"): (v or "").lstrip("﻿") for k, v in row.items()}
+            for row in csv.DictReader(io.StringIO(text))]
 
 
 # Classe CSS de cada cel·la → camp. Les cel·les amb rowspan s'arrosseguen a les files següents.

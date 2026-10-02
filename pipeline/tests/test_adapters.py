@@ -31,7 +31,7 @@ def gencat_row(**overrides):
 
 def test_gencat_single_day_event():
     [event] = gencat.parse_rows([gencat_row()], TODAY, UNTIL)
-    assert event.external_id == "gencat:20261001001"
+    assert event.external_id == "gencat:20261001001:teatre-de-l-aurora"
     assert event.start.time() == time(18) and event.end.time() == time(19, 30)
     assert event.city == "Igualada"
     assert event.price_min == 22 and event.is_free is False
@@ -43,8 +43,15 @@ def test_gencat_short_festival_becomes_daily_sessions():
     row = gencat_row(data_inici="2026-10-03T00:00:00.000", data_fi="2026-10-04T00:00:00.000", horari="10.30 h")
     events = gencat.parse_rows([row], TODAY, UNTIL)
     assert [e.start.date() for e in events] == [date(2026, 10, 3), date(2026, 10, 4)]
-    assert {e.series_key for e in events} == {"gencat:20261001001"}
+    assert {e.series_key for e in events} == {"gencat:20261001001:teatre-de-l-aurora"}
     assert len({e.external_id for e in events}) == 2
+
+
+def test_gencat_same_code_in_several_venues_are_different_events():
+    apolo = gencat_row(espai="Sala Apolo", latitud="41.3744", longitud="2.1699")
+    razz = gencat_row(espai="Razzmatazz", latitud="41.3977", longitud="2.1912")
+    ids = [e.external_id for e in gencat.parse_rows([apolo, razz], TODAY, UNTIL)]
+    assert ids == ["gencat:20261001001:sala-apolo", "gencat:20261001001:razzmatazz"]
 
 
 def test_gencat_long_and_permanent_activities_are_long_running():
@@ -147,6 +154,6 @@ def test_bcn_exhibition_with_opening_hours_is_long_running():
     assert event.kind == "long_running" and event.all_day
 
 
-def test_bcn_reads_utf16_csv():
-    content = "register_id,name\r\n1,Concert\r\n".encode("utf-16")
+def test_bcn_reads_utf16_csv_and_strips_bom_from_values():
+    content = "register_id,name\r\n﻿1,Concert\r\n".encode("utf-16")
     assert bcn.parse_csv(content) == [{"register_id": "1", "name": "Concert"}]

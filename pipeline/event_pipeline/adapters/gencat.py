@@ -8,6 +8,7 @@ Notes de les dades (2026-10):
   - Les imatges són camins relatius a agenda.cultura.gencat.cat.
 """
 
+import re
 from datetime import date, datetime, timedelta
 from urllib.parse import quote
 
@@ -42,6 +43,10 @@ def fetch(client: httpx.Client, today: date, until: date, zones=DEFAULT_ZONES) -
     params = {"$select": ",".join(FIELDS), "$where": where, "$order": "codi", "$limit": "10000"}
     response = http.get(client, API_URL, params=params, timeout=60)
     return response.json()
+
+
+def _slug(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:40]
 
 
 def _city(row: dict) -> str | None:
@@ -100,6 +105,8 @@ def parse_rows(rows: list[dict], today: date, until: date, zones=DEFAULT_ZONES) 
             or "cultura"  # és una agenda cultural: per defecte, cultura
         )
         occurrences = _occurrences(day0, day1, horari, today, until)
+        # Un mateix codi pot tenir una fila per local (festivals en diverses sales): el local forma part de l'id.
+        place = _slug(row.get("espai") or f"{lat:.4f},{lon:.4f}")
         for day, long_running in occurrences:
             if long_running:
                 start = datetime.combine(day0, datetime.min.time(), TIMEZONE)
@@ -119,7 +126,7 @@ def parse_rows(rows: list[dict], today: date, until: date, zones=DEFAULT_ZONES) 
             multi = len(occurrences) > 1
             events.append(SourceEvent(
                 source="gencat",
-                external_id=f"gencat:{row['codi']}" + (f":{day.isoformat()}" if multi else ""),
+                external_id=f"gencat:{row['codi']}:{place}" + (f":{day.isoformat()}" if multi else ""),
                 title=title,
                 start=start,
                 end=end,
@@ -140,6 +147,6 @@ def parse_rows(rows: list[dict], today: date, until: date, zones=DEFAULT_ZONES) 
                 category=category,
                 tags=tags,
                 description=(row.get("descripcio") or "").strip()[:2000] or None,
-                series_key=f"gencat:{row['codi']}" if multi else None,
+                series_key=f"gencat:{row['codi']}:{place}" if multi else None,
             ))
     return events
