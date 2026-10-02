@@ -76,3 +76,27 @@ def test_diba_long_visits_are_long_running_and_tags_give_category():
     visit, route = diba.parse_events(raw, "actesturisme_ca", TODAY, UNTIL, "cultura")
     assert visit.kind == "long_running" and visit.tags == ["visites guiades"]
     assert route.kind == "session" and route.all_day and route.category == "esport_natura"
+
+
+def test_eventbrite_urls():
+    from event_pipeline.adapters import eventbrite
+
+    assert eventbrite.parse_url("https://www.eventbrite.es/o/sala-la-nau-igualada-12345678901") == ("organizer", "12345678901")
+    assert eventbrite.parse_url("https://www.eventbrite.com/e/concert-de-tardor-tickets-987654321098?aff=x") == ("event", "987654321098")
+    assert eventbrite.parse_url("https://www.eventbrite.es/d/spain--igualada/all-events/") is None
+
+
+def test_eventbrite_events_skip_online_and_far():
+    from event_pipeline.adapters import eventbrite
+
+    def ev(i, **o):
+        base = {"id": str(i), "name": {"text": f"Concert {i}"}, "url": f"https://eventbrite.es/e/{i}",
+                "start": {"local": "2026-10-10T20:00:00"}, "end": {"local": "2026-10-10T22:00:00"}, "is_free": True,
+                "venue": {"name": "La Nau", "address": {"city": "Igualada", "latitude": "41.5795", "longitude": "1.6170"}}}
+        base.update(o)
+        return base
+
+    raw = [ev(1), ev(2, online_event=True), ev(3, venue={"address": {"city": "Girona", "latitude": "41.98", "longitude": "2.82"}})]
+    [event] = eventbrite.parse_events(raw, TODAY, UNTIL, "cultura")
+    assert event.external_id == "eventbrite:1" and event.start.time() == time(20) and event.end.time() == time(22)
+    assert event.is_free and event.city == "Igualada" and event.category == "cultura"

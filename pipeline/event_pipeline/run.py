@@ -6,11 +6,12 @@
 """
 
 import argparse
+import os
 import traceback
 from datetime import date, datetime, timedelta
 
 from . import EXTRACTOR_VERSION
-from .adapters import bcn, diba, gencat, jsonld, tribe
+from .adapters import bcn, diba, eventbrite, gencat, jsonld, tribe
 from .clean import html_to_text
 from .config import TIMEZONE, load_settings
 from .extract import SourceContext, extract
@@ -67,6 +68,12 @@ def collect(source: dict, client, store: Store, settings, now: datetime) -> tupl
     if adapter == "jsonld":
         raw = jsonld.fetch(client, source["url"])
         return [item_from_source_event(e) for e in jsonld.parse_events(raw, "jsonld", today, until, category)], 0
+    if adapter == "eventbrite":
+        token = os.getenv("EVENTBRITE_TOKEN")
+        if not token:
+            raise RuntimeError("Falta EVENTBRITE_TOKEN")
+        raw = eventbrite.fetch_organizer(client, token, config["organizer_id"])
+        return [item_from_source_event(e) for e in eventbrite.parse_events(raw, today, until, category)], 0
     if adapter == "llm":
         page = get(client, source["url"], timeout=60).text
         text = html_to_text(page, source["url"])
@@ -132,7 +139,7 @@ def run_source(source: dict, client, store: Store, settings, now: datetime) -> N
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--all", action="store_true", help="executa totes les fonts actives, toquin o no")
-    parser.add_argument("--source", choices=["gencat", "bcn", "llm", "diba", "tribe", "jsonld"],
+    parser.add_argument("--source", choices=["gencat", "bcn", "llm", "diba", "tribe", "jsonld", "eventbrite"],
                         help="només un tipus d'adaptador")
     parser.add_argument("--no-summaries", action="store_true", help="no generar explicacions amb Gemini")
     args = parser.parse_args()
