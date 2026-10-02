@@ -1,10 +1,11 @@
 "use client";
 
-import { CheckCircle2, ChevronLeft, ChevronRight, House, MapPin, Search, Star } from "lucide-react";
+import { CalendarPlus, CheckCircle2, ChevronLeft, ChevronRight, House, MapPin, Search, Star } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DISMISS_REASONS } from "@/lib/categories";
 import { MONTHS_SHORT, WEEKDAYS_SHORT, addDays, dayLabel, local } from "@/lib/dates";
+import { googleCalendarUrl } from "@/lib/links";
 import { LOCAL_COOKIE, LOCAL_RADIUS_KM, homeZone, isNearHome, ofPlace } from "@/lib/local-mode";
 import { score as computeScore, type Score } from "@/lib/ranking";
 import type { AppEvent, Prefs, Zone } from "@/lib/types";
@@ -41,6 +42,7 @@ export function EventBrowser(props: Props) {
   const [query, setQuery] = useState("");
   const [reasonsOpen, setReasonsOpen] = useState(false);
   const [showDetail, setShowDetail] = useState(false); // mòbil: la fitxa substitueix la llista
+  const [askCalendar, setAskCalendar] = useState(false); // mòbil: lliscar a la dreta a la fitxa
   const listRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -108,7 +110,7 @@ export function EventBrowser(props: Props) {
   }
 
   useEffect(() => {
-    const onPop = () => { if (!window.history.state?.fitxa) setShowDetail(false); };
+    const onPop = () => { if (!window.history.state?.fitxa) { setShowDetail(false); setAskCalendar(false); } };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
@@ -180,7 +182,7 @@ export function EventBrowser(props: Props) {
     if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5) goDay(addDays(day, dx < 0 ? 1 : -1));
   };
 
-  // Gest lateral sobre la fitxa (mòbil): tornar a la llista.
+  // Gest lateral sobre la fitxa (mòbil): a l'esquerra torna a la llista; a la dreta pregunta si s'afegeix a Google Calendar.
   const onDetailPointerDown = (e: React.PointerEvent) => (swipe.current = { x: e.clientX, y: e.clientY });
   const onDetailPointerUp = (e: React.PointerEvent) => {
     if (!swipe.current || !showDetail) return;
@@ -188,7 +190,8 @@ export function EventBrowser(props: Props) {
     const dy = e.clientY - swipe.current.y;
     swipe.current = null;
     if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5 && window.matchMedia("(max-width: 767px)").matches) {
-      closeDetail();
+      if (dx < 0) closeDetail();
+      else if (selected) setAskCalendar(true);
     }
   };
 
@@ -320,6 +323,26 @@ export function EventBrowser(props: Props) {
                        reasonsOpen={reasonsOpen} setReasonsOpen={setReasonsOpen} demo={demo} />
         </aside>
       </main>
+
+      {askCalendar && selected && (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/40 p-3 md:hidden" onClick={() => setAskCalendar(false)}>
+          <div role="dialog" aria-modal="true" aria-labelledby="ask-calendar"
+               className="w-full rounded-2xl bg-surface p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
+            <p id="ask-calendar" className="font-semibold">Vols afegir-lo al teu Google Calendar?</p>
+            <p className="mt-1 text-sm text-fg-2">{selected.title}</p>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setAskCalendar(false)}
+                      className="h-11 rounded-lg border border-line bg-surface font-medium text-fg-2">
+                No
+              </button>
+              <a href={googleCalendarUrl(selected)} target="_blank" rel="noopener noreferrer" onClick={() => setAskCalendar(false)}
+                 className="inline-flex h-11 items-center justify-center gap-1.5 rounded-lg bg-accent font-semibold text-surface">
+                <CalendarPlus size={17} /> Sí, afegir
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
 
       <footer className="hidden flex-wrap justify-center gap-3.5 pt-2.5 text-xs text-fg-3 md:flex">
         {props.mode === "calendar" && <span>← → dia</span>}
