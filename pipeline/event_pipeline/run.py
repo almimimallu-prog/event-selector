@@ -7,6 +7,7 @@
 
 import argparse
 import os
+import sys
 import traceback
 from datetime import date, datetime, timedelta
 
@@ -95,7 +96,8 @@ def collect(source: dict, client, store: Store, settings, now: datetime) -> tupl
     raise ValueError(f"Adaptador desconegut: {adapter!r}")
 
 
-def run_source(source: dict, client, store: Store, settings, now: datetime) -> None:
+def run_source(source: dict, client, store: Store, settings, now: datetime) -> bool:
+    """True si ha anat bé. Els errors queden a scrape_runs i a la salut de la font."""
     [run] = store.insert("scrape_runs", {"source_id": source["id"]})
     try:
         items, llm_calls = collect(source, client, store, settings, now)
@@ -120,6 +122,7 @@ def run_source(source: dict, client, store: Store, settings, now: datetime) -> N
               f"{totals['merged']} fusionats · {totals['updated']} actualitzats · {totals['unchanged']} sense canvis"
               + (f" · {totals['possible_duplicates']} possibles duplicats" if totals["possible_duplicates"] else "")
               + (" · pàgina sense canvis" if status == "not_modified" else ""))
+        return True
     except Exception as exc:
         failures = source.get("consecutive_failures", 0) + 1
         wait = BACKOFF_HOURS[min(failures, len(BACKOFF_HOURS)) - 1]
@@ -134,6 +137,7 @@ def run_source(source: dict, client, store: Store, settings, now: datetime) -> N
                                  "next_run_at": (now + timedelta(hours=wait)).isoformat()}, id=f"eq.{source['id']}")
         print(f"✗ {source['name']}: {message}")
         traceback.print_exc()
+        return False
 
 
 def main() -> None:
@@ -157,8 +161,7 @@ def main() -> None:
             sources = [s for s in sources if (s.get("config") or {}).get("adapter") == args.source]
         if not sources:
             print("Cap font per executar ara.")
-        for source in sources:
-            run_source(source, client, store, settings, now)
+        results = [run_source(source, client, store, settings, now) for source in sources]
         if not args.no_summaries:
             try:
                 done = summarize.run(client, store, settings.gemini_api_key, now, record_llm_usage)
@@ -166,6 +169,9 @@ def main() -> None:
                     print(f"✓ Explicacions noves: {done}")
             except QuotaExceeded:
                 print("· Explicacions: quota de Gemini esgotada, es continuarà a la propera execució")
+    # Si han fallat TOTES les fonts, alguna cosa general va malament (claus, Supabase, xarxa): error visible.
+    if results and not any(results):
+        sys.exit("Han fallat totes les fonts")
 
 
 if __name__ == "__main__":

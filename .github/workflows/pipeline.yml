@@ -1,0 +1,50 @@
+# Pipeline d'Event Selector: llegeix les fonts que toquen i desa els esdeveniments a Supabase.
+# Les claus són Secrets del repositori (Settings → Secrets and variables → Actions), mai al codi.
+name: Pipeline
+
+on:
+  schedule:
+    # Cada 6 hores (UTC). Cada font té la seva freqüència (sources.schedule_hours): només s'executen les que toquen.
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      all:
+        description: "Executar totes les fonts ara, toquin o no"
+        type: boolean
+        default: false
+
+# Mai dues execucions alhora (es trepitjarien la quota de Gemini).
+concurrency:
+  group: pipeline
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: pipeline
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pipeline/pyproject.toml
+
+      - name: Instal·lar
+        run: pip install -e ".[dev]"
+
+      - name: Tests
+        run: python -m pytest -q
+
+      - name: Executar el pipeline
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          EVENTBRITE_TOKEN: ${{ secrets.EVENTBRITE_TOKEN }}
+          PYTHONIOENCODING: utf-8
+        run: python -m event_pipeline.run ${{ inputs.all && '--all' || '' }}
