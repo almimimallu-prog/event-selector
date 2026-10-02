@@ -93,8 +93,25 @@ export function EventBrowser(props: Props) {
   function select(id: string | null, openOnMobile = true) {
     setSelectedId(id);
     setReasonsOpen(false);
-    if (openOnMobile) setShowDetail(true);
+    if (openOnMobile) openDetail();
   }
+
+  // Mòbil: obrir la fitxa afegeix una entrada a l'historial perquè el gest "enrere" d'Android torni a la llista.
+  function openDetail() {
+    if (!showDetail && window.matchMedia("(max-width: 767px)").matches) window.history.pushState({ fitxa: true }, "");
+    setShowDetail(true);
+  }
+
+  function closeDetail() {
+    if (window.history.state?.fitxa) window.history.back(); // el popstate tanca la fitxa
+    else setShowDetail(false);
+  }
+
+  useEffect(() => {
+    const onPop = () => { if (!window.history.state?.fitxa) setShowDetail(false); };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   function goDay(key: string) {
     if (props.mode !== "calendar") return;
@@ -138,7 +155,7 @@ export function EventBrowser(props: Props) {
         case "x": case "X": if (current) setReasonsOpen((o) => !o); break;
         case "g": case "G": document.querySelector<HTMLAnchorElement>("a[data-gcal]")?.click(); break;
         case "/": searchRef.current?.focus(); break;
-        case "Escape": setReasonsOpen(false); setShowDetail(false); break;
+        case "Escape": setReasonsOpen(false); if (showDetail) closeDetail(); break;
         default: return;
       }
       ev.preventDefault();
@@ -161,6 +178,18 @@ export function EventBrowser(props: Props) {
     const dy = e.clientY - swipe.current.y;
     swipe.current = null;
     if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5) goDay(addDays(day, dx < 0 ? 1 : -1));
+  };
+
+  // Gest lateral sobre la fitxa (mòbil): tornar a la llista.
+  const onDetailPointerDown = (e: React.PointerEvent) => (swipe.current = { x: e.clientX, y: e.clientY });
+  const onDetailPointerUp = (e: React.PointerEvent) => {
+    if (!swipe.current || !showDetail) return;
+    const dx = e.clientX - swipe.current.x;
+    const dy = e.clientY - swipe.current.y;
+    swipe.current = null;
+    if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5 && window.matchMedia("(max-width: 767px)").matches) {
+      closeDetail();
+    }
   };
 
   const nearby = selected && selected.kind === "session"
@@ -283,11 +312,11 @@ export function EventBrowser(props: Props) {
           </div>
         </section>
 
-        <aside aria-label="Fitxa de l'esdeveniment"
-               className={`min-h-0 overflow-y-auto rounded-2xl border border-line bg-surface ${showDetail ? "block" : "hidden md:block"}`}>
+        <aside aria-label="Fitxa de l'esdeveniment" onPointerDown={onDetailPointerDown} onPointerUp={onDetailPointerUp}
+               className={`min-h-0 touch-pan-y overflow-y-auto rounded-2xl border border-line bg-surface ${showDetail ? "block" : "hidden md:block"}`}>
           <EventDetail event={selected} score={selected ? scores.get(selected.id)! : null} nearby={nearby}
                        onToggle={toggle} onDismiss={(e, r) => { dismiss(e, r); setReasonsOpen(false); }} onNote={setNote}
-                       onSelect={(id) => select(id)} onBack={() => setShowDetail(false)}
+                       onSelect={(id) => select(id)} onBack={closeDetail}
                        reasonsOpen={reasonsOpen} setReasonsOpen={setReasonsOpen} demo={demo} />
         </aside>
       </main>
