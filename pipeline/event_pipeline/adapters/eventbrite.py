@@ -47,17 +47,15 @@ def fetch_event(client: httpx.Client, token: str, event_id: str) -> dict:
 
 
 def fetch_organizer(client: httpx.Client, token: str, organizer_id: str) -> list[dict]:
-    events, continuation = [], None
-    for _ in range(MAX_PAGES):
-        params = {"status": "live", "order_by": "start_asc", "expand": "venue,category", "page_size": 50}
-        if continuation:
-            params["continuation"] = continuation
+    events = []
+    for page in range(1, MAX_PAGES + 1):
+        # Aquesta via no admet order_by (dona 502), page_size ni time_filter (400): s'ordena i es filtra després.
+        params = {"status": "live", "expand": "venue,category", "page": page}
         data = _get(client, token, f"/organizers/{organizer_id}/events/", **params)
         events += data.get("events", [])
-        page = data.get("pagination") or {}
-        if not page.get("has_more_items"):
+        pagination = data.get("pagination") or {}
+        if not pagination.get("has_more_items") or page >= int(pagination.get("page_count") or 1):
             break
-        continuation = page.get("continuation")
     return events
 
 

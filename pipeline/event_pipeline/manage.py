@@ -24,14 +24,17 @@ def eventbrite_add(store: Store, client, url: str) -> None:
     if not parsed:
         sys.exit("No és un enllaç d'Eventbrite reconegut (/o/… d'organitzador o /e/… d'esdeveniment).")
     kind, ident = parsed
+    event_title = None
     if kind == "event":
         event = eventbrite.fetch_event(client, token, ident)
         ident = event.get("organizer_id")
         if not ident:
             sys.exit("Aquest esdeveniment no indica organitzador.")
-        print(f"Esdeveniment «{event['name']['text']}» → organitzador {ident}")
+        event_title = event["name"]["text"].strip()
+        print(f"Esdeveniment «{event_title}» → organitzador {ident}")
     organizer = eventbrite._get(client, token, f"/organizers/{ident}/")
-    name = organizer.get("name") or f"Organitzador {ident}"
+    # Alguns organitzadors no tenen nom al perfil: es fa servir el títol de l'esdeveniment per reconèixer-lo.
+    name = organizer.get("name") or (f"organitzador de «{event_title}»" if event_title else f"organitzador {ident}")
     events = eventbrite.fetch_organizer(client, token, ident)  # comprova que l'API ho permet abans de desar
     page = organizer.get("url") or f"https://www.eventbrite.com/o/{ident}"
     if store.select("sources", select="id", url=f"eq.{page}"):
