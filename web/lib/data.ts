@@ -1,15 +1,24 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AppEvent, Kind, Prefs, Zone } from "./types";
+import { type AppEvent, type Kind, type Learning, NO_LEARNING, type Prefs, type Zone } from "./types";
 
-const DEFAULT_PREFS: Prefs = { category_weights: {}, availability: [], default_availability_weight: 0.2 };
+const DEFAULT_PREFS: Omit<Prefs, "learning"> = {
+  category_weights: {}, availability: [], default_availability_weight: 0.2, blocked_tags: [],
+};
 
 export async function loadSettings(supabase: SupabaseClient): Promise<{ prefs: Prefs; zones: Zone[] }> {
-  const [prefs, zones] = await Promise.all([
-    supabase.from("user_prefs").select("category_weights, availability, default_availability_weight").maybeSingle(),
-    supabase.from("user_zones").select("id, name, radius_km, active").order("sort_order"),
+  const [prefs, zones, learning] = await Promise.all([
+    supabase.from("user_prefs").select("category_weights, availability, default_availability_weight, blocked_tags").maybeSingle(),
+    // zone_list dona també les coordenades (migració 20261004000000); si no hi és, sense coordenades.
+    supabase.rpc("zone_list").then((r) => (r.error ? supabase.from("user_zones").select("id, name, radius_km, active").order("sort_order") : r)),
+    // app_learning: migració 20261005000000; si no hi és, el rànquing funciona sense aprenentatge.
+    supabase.rpc("app_learning"),
   ]);
   return {
-    prefs: (prefs.data as Prefs | null) ?? DEFAULT_PREFS,
+    prefs: {
+      ...DEFAULT_PREFS,
+      ...((prefs.data as Omit<Prefs, "learning"> | null) ?? {}),
+      learning: learning.error ? NO_LEARNING : { ...NO_LEARNING, ...(learning.data as Learning) },
+    },
     zones: ((zones.data ?? []) as Zone[]).map((z) => ({ ...z, radius_km: Number(z.radius_km) })),
   };
 }

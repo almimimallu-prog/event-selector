@@ -1,18 +1,68 @@
 "use client";
 
-import { CalendarPlus, CheckCircle2, ChevronLeft, ChevronRight, House, MapPin, Search, Star } from "lucide-react";
+import { CalendarPlus, CheckCircle2, ChevronLeft, ChevronRight, Euro, House, MapPin, Ruler, Search, Star } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { DISMISS_REASONS } from "@/lib/categories";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { CATEGORIES, DISMISS_REASONS } from "@/lib/categories";
 import { MONTHS_SHORT, WEEKDAYS_SHORT, addDays, dayLabel, local } from "@/lib/dates";
 import { googleCalendarUrl } from "@/lib/links";
 import { LOCAL_COOKIE, LOCAL_RADIUS_KM, homeZone, isNearHome, ofPlace } from "@/lib/local-mode";
-import { score as computeScore, type Score } from "@/lib/ranking";
-import type { AppEvent, Prefs, Zone } from "@/lib/types";
+import { score as computeScore, isBlocked, type Score } from "@/lib/ranking";
+import type { AppEvent, Category, Prefs, Zone } from "@/lib/types";
 import { AppNav, Brand } from "./app-nav";
 import { EventDetail } from "./event-detail";
 import { EventRow } from "./event-row";
 import { useMarks } from "./use-marks";
+
+// Filtres ràpids de la pantalla principal: es recorden en aquest navegador.
+type QuickFilters = { off: Category[]; free: boolean; maxKm: number | null };
+const NO_FILTERS: QuickFilters = { off: [], free: false, maxKm: null };
+const FILTERS_KEY = "filtres-rapids";
+const DISTANCES = [5, 10, 20, 50, 100];
+
+// Lectura amb useSyncExternalStore: al servidor (i en el primer pintat) no hi ha filtres.
+const FILTERS_EVENT = "filtres-rapids";
+function subscribeFilters(onChange: () => void) {
+  window.addEventListener("storage", onChange);
+  window.addEventListener(FILTERS_EVENT, onChange);
+  return () => {
+    window.removeEventListener("storage", onChange);
+    window.removeEventListener(FILTERS_EVENT, onChange);
+  };
+}
+function filtersSnapshot(): string {
+  try {
+    return localStorage.getItem(FILTERS_KEY) ?? "{}";
+  } catch {
+    return memoryFilters;
+  }
+}
+let memoryFilters = "{}"; // sense emmagatzematge (navegació privada): val fins que es tanqui la pàgina
+
+function saveFilters(next: QuickFilters) {
+  memoryFilters = JSON.stringify(next);
+  try {
+    localStorage.setItem(FILTERS_KEY, memoryFilters);
+  } catch {
+    // Sense emmagatzematge: es fa servir memoryFilters.
+  }
+  window.dispatchEvent(new Event(FILTERS_EVENT));
+}
+
+function parseFilters(raw: string): QuickFilters {
+  try {
+    return { ...NO_FILTERS, ...JSON.parse(raw) };
+  } catch {
+    return NO_FILTERS;
+  }
+}
+
+function passesQuick(e: AppEvent, f: QuickFilters): boolean {
+  if (f.off.includes(e.category)) return false;
+  if (f.free && !(e.is_free || e.price_min === 0)) return false;
+  // Sense ubicació: no se'n sap la distància, es mostra.
+  return f.maxKm == null || e.zone_km == null || e.zone_km <= f.maxKm;
+}
 
 // Punts de densitat: suggeriments amb aquesta puntuació o més (màxim 3 punts per dia).
 const DENSITY_SCORE = 70;
@@ -43,23 +93,33 @@ export function EventBrowser(props: Props) {
   const [reasonsOpen, setReasonsOpen] = useState(false);
   const [showDetail, setShowDetail] = useState(false); // mòbil: la fitxa substitueix la llista
   const [askCalendar, setAskCalendar] = useState(false); // mòbil: lliscar a la dreta a la fitxa
+  const rawFilters = useSyncExternalStore(subscribeFilters, filtersSnapshot, () => "{}");
+  const filters = useMemo(() => parseFilters(rawFilters), [rawFilters]);
   const listRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+
+  const setFilters = saveFilters;
 
   const scores = useMemo(() => {
     const now = new Date();
     return new Map<string, Score>(events.map((e) => [e.id, computeScore(e, prefs, zones, now)]));
   }, [events, prefs, zones]);
 
-  const visible = useMemo(() => {
+  // Els plans propis (⭐ ✅) sempre surten; els filtres ràpids i les paraules bloquejades només afecten la resta.
+  const { visible, hiddenByFilters } = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return events.filter(
+    const base = events.filter(
       (e) =>
         e.user_state !== "dismissed" &&
         (localOnly && home ? isNearHome(e, home) : !(e.zone_name && zoneOff.has(e.zone_name))) &&
-        (!q || [e.title, e.venue_name, e.city, ...e.tags].join(" ").toLowerCase().includes(q)),
+        (!q || [e.title, e.venue_name, e.city, ...e.tags].join(" ").toLowerCase().includes(q)) &&
+        (isMine(e) || !isBlocked(e, prefs.blocked_tags)),
     );
-  }, [events, query, zoneOff, localOnly, home]);
+    const shown = base.filter((e) => isMine(e) || passesQuick(e, filters));
+    const shownIds = new Set(shown.map((e) => e.id));
+    return { visible: shown, hiddenByFilters: base.filter((e) => !shownIds.has(e.id)) };
+  }, [events, query, zoneOff, localOnly, home, filters, prefs.blocked_tags]);
+  const filtersOn = filters.off.length > 0 || filters.free || filters.maxKm != null;
 
   function toggleLocalOnly() {
     const next = !localOnly;
@@ -203,6 +263,9 @@ export function EventBrowser(props: Props) {
     : [];
 
   const listTitle = props.mode === "calendar" ? dayLabel(day) : props.title;
+  const hiddenHere = props.mode === "calendar"
+    ? hiddenByFilters.filter((e) => local(e.start_at).key === day).length
+    : hiddenByFilters.length;
 
   return (
     <div className="mx-auto flex w-full max-w-[1280px] flex-col px-4 pb-20 md:h-dvh md:pb-3">
@@ -236,6 +299,41 @@ export function EventBrowser(props: Props) {
                    className="w-full min-w-0 bg-transparent text-sm outline-none" />
             <kbd className="hidden rounded border border-b-2 border-line px-1 text-[11px] text-fg-2 md:inline">/</kbd>
           </label>
+        </div>
+
+        {/* Filtres ràpids: categories, gratis i distància màxima (no toquen les zones de Configuració). */}
+        <div className="-mx-4 flex items-center gap-1.5 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none]" role="group" aria-label="Filtres ràpids">
+          {(Object.keys(CATEGORIES) as Category[]).map((c) => {
+            const { label, icon: Icon, text, soft } = CATEGORIES[c];
+            const on = !filters.off.includes(c);
+            return (
+              <button key={c} type="button" aria-pressed={on} title={on ? `Amagar ${label}` : `Mostrar ${label}`}
+                      onClick={() => setFilters({ ...filters, off: on ? [...filters.off, c] : filters.off.filter((x) => x !== c) })}
+                      className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[13px] font-medium ${on ? `border-transparent ${soft} ${text}` : "border-line bg-surface text-fg-3 line-through"}`}>
+                <Icon size={14} aria-hidden /> <span className="hidden sm:inline">{label}</span>
+                <span className="sr-only sm:hidden">{label}</span>
+              </button>
+            );
+          })}
+          <button type="button" aria-pressed={filters.free} onClick={() => setFilters({ ...filters, free: !filters.free })}
+                  className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[13px] font-medium ${filters.free ? "border-transparent bg-accent text-surface" : "border-line bg-surface text-fg-2"}`}>
+            <Euro size={14} aria-hidden /> Gratis
+          </button>
+          <label className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[13px] font-medium ${filters.maxKm != null ? "border-transparent bg-accent text-surface" : "border-line bg-surface text-fg-2"}`}>
+            <Ruler size={14} aria-hidden />
+            <select value={filters.maxKm ?? ""} aria-label="Distància màxima"
+                    onChange={(e) => setFilters({ ...filters, maxKm: e.target.value ? Number(e.target.value) : null })}
+                    className="bg-transparent outline-none [&>option]:text-fg">
+              <option value="">Qualsevol distància</option>
+              {DISTANCES.map((km) => <option key={km} value={km}>Fins a {km} km</option>)}
+            </select>
+          </label>
+          {filtersOn && (
+            <button type="button" onClick={() => setFilters(NO_FILTERS)}
+                    className="shrink-0 px-1.5 text-[13px] font-medium text-accent underline">
+              Treure filtres
+            </button>
+          )}
         </div>
 
         {props.mode === "calendar" && (
@@ -290,6 +388,7 @@ export function EventBrowser(props: Props) {
             <h1 className="font-display text-xl font-medium">{listTitle}</h1>
             <span className="text-[13px] text-fg-3 tabular-nums">
               {ordered.all.length} esdeveniments · {props.mode === "list" && props.sort === "date" ? "per data" : "per puntuació"}
+              {hiddenHere > 0 && <> · {hiddenHere} amagats pels filtres</>}
             </span>
           </div>
           <div ref={listRef} onPointerDown={onPointerDown} onPointerUp={onPointerUp}

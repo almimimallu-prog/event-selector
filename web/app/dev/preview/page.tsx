@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { EventBrowser } from "@/components/event-browser";
 import { addDays, madridMidnight, todayKey, weekStart } from "@/lib/dates";
-import type { AppEvent, Category, Prefs, Zone } from "@/lib/types";
+import { type AppEvent, type Category, NO_LEARNING, type Prefs, type Zone } from "@/lib/types";
 
 // Vista prèvia amb dades inventades, NOMÉS en desenvolupament (npm run dev): per provar la UI sense sessió.
 const ZONES: Zone[] = [
@@ -15,6 +15,8 @@ const PREFS: Prefs = {
     { days: [6, 7], from: "00:00", to: "23:59", weight: 1 },
   ],
   default_availability_weight: 0.2,
+  blocked_tags: [],
+  learning: NO_LEARNING,
 };
 const SAMPLES: [string, Category, string, string, number, string | null][] = [
   ["Jazz a l'Aurora: trio manouche", "cultura", "Teatre de l'Aurora", "Igualada", 1, "12 €"],

@@ -4,6 +4,9 @@ import { AppNav, Brand } from "@/components/app-nav";
 import { loadSettings } from "@/lib/data";
 import { municipalityNames } from "@/lib/municipis";
 import { createClient } from "@/lib/supabase/server";
+import { AvailabilityEditor } from "./availability-editor";
+import { BlockedWordsEditor, InterestsEditor } from "./interests-editor";
+import { LearningSummary } from "./learning-summary";
 import { PasswordForm } from "./password-form";
 import { type EditableSource, SourcesEditor } from "./sources-editor";
 import { ZonesEditor } from "./zones-editor";
@@ -28,7 +31,6 @@ export default async function SettingsPage() {
       .order("name"),
     supabase.auth.getClaims(),
   ]);
-  const days = ["", "Dl", "Dm", "Dc", "Dj", "Dv", "Ds", "Dg"];
   const sourceRows: EditableSource[] = (sources.data ?? []).map(({ config, ...s }) => ({
     ...s,
     adapter: (config as { adapter?: string } | null)?.adapter ?? null,
@@ -45,12 +47,23 @@ export default async function SettingsPage() {
       </section>
 
       <section className="rounded-2xl border border-line bg-surface p-5">
+        <h2 className="mb-1 font-semibold">Interessos</h2>
+        <InterestsEditor weights={prefs.category_weights} learning={prefs.learning} />
+      </section>
+
+      <section className="rounded-2xl border border-line bg-surface p-5">
+        <h2 className="mb-3 font-semibold">Paraules bloquejades</h2>
+        <BlockedWordsEditor words={prefs.blocked_tags} />
+      </section>
+
+      <section className="rounded-2xl border border-line bg-surface p-5">
         <h2 className="mb-3 font-semibold">Disponibilitat</h2>
-        <ul className="grid gap-1 text-sm text-fg-2">
-          {prefs.availability.map((s, i) => (
-            <li key={i}>{s.days.map((d) => days[d]).join(", ")} · de {s.from} a {s.to}</li>
-          ))}
-        </ul>
+        <AvailabilityEditor slots={prefs.availability} outside={prefs.default_availability_weight} />
+      </section>
+
+      <section className="rounded-2xl border border-line bg-surface p-5">
+        <h2 className="mb-3 font-semibold">El que he après de tu</h2>
+        <LearningSummary learning={prefs.learning} />
       </section>
 
       <section className="rounded-2xl border border-line bg-surface p-5">

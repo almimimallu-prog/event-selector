@@ -40,12 +40,28 @@ export type AppEvent = {
   has_unseen_changes: boolean;
 };
 
-export type Zone = { id: string; name: string; radius_km: number; active: boolean };
+export type Zone = { id: string; name: string; radius_km: number; active: boolean; lat?: number; lon?: number };
 
 export type AvailabilitySlot = { days: number[]; from: string; to: string; weight: number };
+
+type Counts = { pos: number; neg: number };
+
+/** El que s'aprèn de les marques (funció SQL app_learning). */
+export type Learning = {
+  categories: Partial<Record<Category, Counts>>;
+  tags: Record<string, Counts>;
+  far_km: number | null;
+  expensive_eur: number | null;
+  bad_slots: Record<string, number>;
+};
+
+export const NO_LEARNING: Learning = { categories: {}, tags: {}, far_km: null, expensive_eur: null, bad_slots: {} };
 
 export type Prefs = {
   category_weights: Partial<Record<Category, number>>;
   availability: AvailabilitySlot[];
   default_availability_weight: number;
+  /** Paraules bloquejades: els plans que les contenen no surten mai (columna blocked_tags). */
+  blocked_tags: string[];
+  learning: Learning;
 };
