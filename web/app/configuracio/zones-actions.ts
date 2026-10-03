@@ -3,11 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { findMunicipality } from "@/lib/municipis";
 import { createClient } from "@/lib/supabase/server";
+import { MAX_KM, MAX_ZONES, MIN_KM } from "@/lib/zones";
 
 export type FormState = { status: "idle" | "ok" | "error"; message?: string };
-
-const MIN_KM = 1;
-const MAX_KM = 100;
 
 function refresh() {
   revalidatePath("/", "layout"); // inici, exposicions, cursos... depenen de les zones
@@ -26,6 +24,9 @@ export async function addZone(_prev: FormState, form: FormData): Promise<FormSta
   if (!(radius >= MIN_KM && radius <= MAX_KM)) return { status: "error", message: `El radi ha de ser de ${MIN_KM} a ${MAX_KM} km.` };
   const supabase = await createClient();
   const { data: existing } = await supabase.from("user_zones").select("name, sort_order");
+  if ((existing?.length ?? 0) >= MAX_ZONES) {
+    return { status: "error", message: `Com a màxim ${MAX_ZONES} municipis. Canvia'n un o esborra'l abans.` };
+  }
   if (existing?.some((z) => z.name.toLowerCase() === place.name.toLowerCase())) {
     return { status: "error", message: `Ja tens la zona ${place.name}.` };
   }
@@ -44,6 +45,24 @@ export async function setZoneRadius(id: string, radius: number): Promise<string 
   if (!(radius >= MIN_KM && radius <= MAX_KM)) return `El radi ha de ser de ${MIN_KM} a ${MAX_KM} km.`;
   const supabase = await createClient();
   const { error } = await supabase.from("user_zones").update({ radius_km: radius }).eq("id", id);
+  if (error) return error.message;
+  refresh();
+  return null;
+}
+
+/** Canvia el municipi d'una zona (n'actualitza el centre) i en manté el radi. */
+export async function setZoneMunicipality(id: string, name: string): Promise<string | null> {
+  const place = findMunicipality(name);
+  if (!place) return `No trobo el municipi «${name}». Tria'l de la llista.`;
+  const supabase = await createClient();
+  const { data: existing } = await supabase.from("user_zones").select("id, name");
+  if (existing?.some((z) => z.id !== id && z.name.toLowerCase() === place.name.toLowerCase())) {
+    return `Ja tens la zona ${place.name}.`;
+  }
+  const { error } = await supabase
+    .from("user_zones")
+    .update({ name: place.name, center: `SRID=4326;POINT(${place.lon} ${place.lat})` })
+    .eq("id", id);
   if (error) return error.message;
   refresh();
   return null;

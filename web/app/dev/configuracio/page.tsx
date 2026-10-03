@@ -8,7 +8,6 @@ import { ZonesEditor } from "../../configuracio/zones-editor";
 const ZONES = [
   { id: "1", name: "Igualada", radius_km: 30, active: true },
   { id: "2", name: "Barcelona", radius_km: 15, active: true },
-  { id: "3", name: "Manresa", radius_km: 20, active: false },
 ];
 const base = { url: "https://example.com/", last_error: null, consecutive_failures: 0, adapter: "llm" };
 const SOURCES: EditableSource[] = [
