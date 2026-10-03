@@ -11,6 +11,8 @@ const ITEMS = [
   { href: "/plans", label: "Els meus plans", short: "Plans", icon: CircleCheck },
   { href: "/configuracio", label: "Configuració", short: "Ajustos", icon: Settings },
 ];
+// Només a l'escriptori (al mòbil s'hi arriba des de Configuració, per no afegir una sisena icona).
+const DESKTOP_ONLY = [{ href: "/revisar", label: "Per revisar" }];
 
 /** Escriptori: pestanyes a la capçalera. Mòbil: barra inferior fixa. */
 export function AppNav() {
@@ -19,7 +21,7 @@ export function AppNav() {
   return (
     <>
       <nav className="hidden gap-1 md:flex" aria-label="Seccions">
-        {ITEMS.map(({ href, label }) => (
+        {[...ITEMS.slice(0, 4), ...DESKTOP_ONLY, ITEMS[4]].map(({ href, label }) => (
           <Link key={href} href={href}
                 className={`rounded-full px-3 py-1 text-sm font-medium ${active(href) ? "bg-accent-soft text-accent" : "text-fg-2 hover:bg-surface-2"}`}>
             {label}

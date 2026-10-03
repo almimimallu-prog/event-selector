@@ -181,6 +181,8 @@ def item_from_extracted(event: ExtractedEvent, source: dict, now: datetime) -> d
     # Ubicació aproximada pel municipi (fins que hi hagi geocodificació de locals).
     place = locate_municipality(event.city or source.get("default_city"))
     city = place[0] if place else (event.city or source.get("default_city"))
+    if city and "sense lloc" in problems:  # el municipi de la font ja situa l'esdeveniment
+        problems = [p for p in problems if p != "sense lloc"]
     return {
         # Amb l'hora: el mateix espectacle pot fer dues sessions el mateix dia (18:00 i 20:00).
         "external_id": f"{_slug(event.title)}:{event.start.date().isoformat()}"

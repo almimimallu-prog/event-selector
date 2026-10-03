@@ -1,6 +1,7 @@
 "use client";
 
-import { CalendarPlus, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Euro, MapPin, Search, Star } from "lucide-react";
+import { CalendarPlus, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Euro, MapPin, Plus, Search, Star } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { CATEGORIES, DISMISS_REASONS } from "@/lib/categories";
@@ -62,6 +63,10 @@ function passesQuick(e: AppEvent, f: QuickFilters): boolean {
   return !f.free || !!e.is_free || e.price_min === 0;
 }
 
+// Quants suggeriments es mostren d'entrada (la resta, amb "Veure'n més"). Els plans propis sempre surten.
+const FIRST_CALENDAR = 15;
+const FIRST_LIST = 20;
+
 // Punts de densitat: suggeriments amb aquesta puntuació o més (màxim 3 punts per dia).
 const DENSITY_SCORE = 70;
 
@@ -83,6 +88,7 @@ export function EventBrowser(props: Props) {
   const [day, setDay] = useState(props.mode === "calendar" ? props.initialDay : "");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [geoOpen, setGeoOpen] = useState(false);
+  const [expandedFor, setExpandedFor] = useState<string | null>(null); // dia (o llista) amb "Veure'n més" obert
   const [query, setQuery] = useState("");
   const [reasonsOpen, setReasonsOpen] = useState(false);
   const [showDetail, setShowDetail] = useState(false); // mòbil: la fitxa substitueix la llista
@@ -130,8 +136,10 @@ export function EventBrowser(props: Props) {
     const rest = pool.filter((e) => !isMine(e));
     if (props.mode === "list" && props.sort === "date") rest.sort((a, b) => a.start_at.localeCompare(b.start_at));
     else rest.sort((a, b) => scores.get(b.id)!.total - scores.get(a.id)!.total);
-    return { plans, rest, all: [...plans, ...rest] };
-  }, [props, byDay, day, visible, scores]);
+    const limit = props.mode === "calendar" ? FIRST_CALENDAR : props.sort === "date" ? Infinity : FIRST_LIST;
+    const shown = expandedFor === (props.mode === "calendar" ? day : "list") ? rest : rest.slice(0, limit);
+    return { plans, rest: shown, more: rest.length - shown.length, all: [...plans, ...shown] };
+  }, [props, byDay, day, visible, scores, expandedFor]);
 
   const selected = ordered.all.find((e) => e.id === selectedId) ?? (showDetail ? null : ordered.all[0] ?? null);
   const selectedIndex = selected ? ordered.all.indexOf(selected) : -1;
@@ -354,9 +362,15 @@ export function EventBrowser(props: Props) {
         <section aria-label={listTitle}
                  className={`min-h-0 flex-col overflow-hidden rounded-2xl border border-line bg-surface ${showDetail ? "hidden md:flex" : "flex"}`}>
           <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-4 pt-3.5 pb-2.5">
-            <h1 className="font-display text-xl font-medium">{listTitle}</h1>
+            <h1 className="flex items-center gap-2 font-display text-xl font-medium">
+              {listTitle}
+              <Link href="/plans/nou" title="Afegir un pla a mà" aria-label="Afegir un pla a mà"
+                    className="inline-flex items-center gap-0.5 rounded-full border border-line px-2 py-0.5 font-sans text-xs font-medium text-accent hover:bg-surface-2">
+                <Plus size={13} /> Afegir
+              </Link>
+            </h1>
             <span className="text-[13px] text-fg-3 tabular-nums">
-              {ordered.all.length} esdeveniments · {props.mode === "list" && props.sort === "date" ? "per data" : "per puntuació"}
+              {ordered.all.length + ordered.more} esdeveniments · {props.mode === "list" && props.sort === "date" ? "per data" : "per puntuació"}
               {hiddenHere > 0 && <> · {hiddenHere} amagats pels filtres</>}
             </span>
           </div>
@@ -377,6 +391,12 @@ export function EventBrowser(props: Props) {
               <EventRow key={e.id} event={e} score={scores.get(e.id)!.total} selected={e.id === selected?.id}
                         onSelect={() => select(e.id)} withDate={props.mode === "list"} />
             ))}
+            {ordered.more > 0 && (
+              <button type="button" onClick={() => setExpandedFor(props.mode === "calendar" ? day : "list")}
+                      className="mx-4 my-3 w-[calc(100%-2rem)] rounded-lg border border-line py-2.5 text-sm font-medium text-accent hover:bg-surface-2">
+                Veure&apos;n {ordered.more} més
+              </button>
+            )}
             {props.mode === "calendar" && ordered.all.length > 0 && (
               <p className="p-4 text-center text-[13px] text-fg-3">Final del dia · llisca o prem → per anar al dia següent</p>
             )}

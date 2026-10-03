@@ -31,6 +31,16 @@ export function madridMidnight(key: string): Date {
   return new Date(guess.getTime() - offsetMin * 60000);
 }
 
+/** Instant UTC d'un dia i hora ("HH:MM") a Madrid. */
+export function madridTime(key: string, hhmm: string): Date {
+  const [y, m, d] = key.split("-").map(Number);
+  const [h, mi] = hhmm.split(":").map(Number);
+  const guess = new Date(Date.UTC(y, m - 1, d, h, mi));
+  const l = local(guess);
+  const offsetMin = (Date.UTC(l.year, l.month - 1, l.day, l.hour, l.minute) - guess.getTime()) / 60000;
+  return new Date(guess.getTime() - offsetMin * 60000);
+}
+
 export function addDays(key: string, n: number): string {
   const [y, m, d] = key.split("-").map(Number);
   const t = new Date(Date.UTC(y, m - 1, d + n));

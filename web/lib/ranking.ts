@@ -18,7 +18,8 @@ export type Score = { total: number; parts: number[] };
 const FAR_FACTOR = 0.4;
 const EXPENSIVE_FACTOR = 0.6;
 const BAD_SLOT_FACTOR = 0.4;
-const BAD_SLOT_MIN = 2; // descarts per "mal horari" a la mateixa franja abans de penalitzar-la
+const BAD_SLOT_MIN = 2;
+const PROXIMITY_HALF_KM = 15; // a aquesta distància, la meitat dels punts de proximitat // descarts per "mal horari" a la mateixa franja abans de penalitzar-la
 
 export function daySlot(event: AppEvent): string {
   const l = local(event.start_at);
@@ -69,8 +70,8 @@ export function score(event: AppEvent, prefs: Prefs, zones: Zone[], now = new Da
   if (learning.expensive_eur != null && (event.price_min ?? 0) >= learning.expensive_eur) interestFactor *= EXPENSIVE_FACTOR;
   const interest = 35 * interestFactor;
 
-  const radius = zones.find((z) => z.name === event.zone_name)?.radius_km;
-  let proximity = event.zone_km == null || radius == null ? 12 : 25 * (1 - 0.6 * Math.min(1, event.zone_km / Math.max(radius, 1)));
+  // Proximitat en km reals (no relativa al radi): 0 km → 25, 5 km → 19, 15 km → 12,5, 50 km → 6.
+  let proximity = event.zone_km == null ? 12 : 25 / (1 + event.zone_km / PROXIMITY_HALF_KM);
   const fromHome = homeKm(event, zones);
   if (learning.far_km != null && fromHome != null && fromHome > learning.far_km) proximity *= FAR_FACTOR;
 
