@@ -15,7 +15,7 @@ from datetime import datetime
 import httpx
 
 GRAPH = "https://graph.facebook.com/{version}"
-DEFAULT_VERSION = "v25.0"
+DEFAULT_VERSION = "v26.0"
 MEDIA_FIELDS = "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,children{media_type,media_url}"
 
 
