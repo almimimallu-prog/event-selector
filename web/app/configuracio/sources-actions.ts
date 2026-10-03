@@ -54,6 +54,10 @@ export async function addSource(_prev: FormState, form: FormData): Promise<FormS
   const { data: claims } = await supabase.auth.getClaims();
   if (!claims) return { status: "error", message: "La sessió ha caducat. Torna a entrar." };
   const raw = String(form.get("url") ?? "").trim();
+  const categoryInput = String(form.get("category") ?? "");
+  const defaultCategory = ["cultura", "esport_natura", "formacio_tech", "gastronomia_social", "dating"].includes(categoryInput)
+    ? { default_category: categoryInput }
+    : {};
   const cityInput = String(form.get("city") ?? "").trim();
   const city = cityInput ? findMunicipality(cityInput) : undefined;
   if (cityInput && !city) return { status: "error", message: "No trobo aquest municipi. Tria'l de la llista o deixa-ho buit." };
@@ -104,7 +108,7 @@ export async function addSource(_prev: FormState, form: FormData): Promise<FormS
       name: "Eventbrite (pendent: es completarà a la propera actualització)",
       type: "api",
       url: url.href,
-      config: { adapter: "eventbrite", pending_url: url.href },
+      config: { adapter: "eventbrite", pending_url: url.href, ...defaultCategory },
       schedule_hours: 24,
       discovered_via: "manual",
     });
@@ -142,7 +146,7 @@ export async function addSource(_prev: FormState, form: FormData): Promise<FormS
     name,
     type: adapter === "llm" ? "web" : adapter === "ics" ? "ics" : "api",
     url: url.href,
-    config: { adapter },
+    config: { adapter, ...defaultCategory },
     schedule_hours: 24,
     default_city: city?.name ?? null,
     discovered_via: "manual",

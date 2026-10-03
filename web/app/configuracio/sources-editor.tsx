@@ -2,6 +2,8 @@
 
 import { ExternalLink, Trash2 } from "lucide-react";
 import { useActionState, useState, useTransition } from "react";
+import { CATEGORIES } from "@/lib/categories";
+import type { Category } from "@/lib/types";
 import { addSource, deleteSource, setSourceActive } from "./sources-actions";
 import type { FormState } from "@/lib/geo-actions";
 
@@ -86,6 +88,10 @@ export function SourcesEditor({ sources }: { sources: EditableSource[] }) {
           <input name="name" placeholder="Nom (opcional)" aria-label="Nom de la font" className={`${input} min-w-40 flex-1`} />
           <input name="city" list="municipis" autoComplete="off" placeholder="Municipi (opcional)"
                  aria-label="Municipi on són els esdeveniments" className={`${input} min-w-40 flex-1`} />
+          <select name="category" defaultValue="" aria-label="Categoria per defecte" className={`${input} min-w-40 flex-1`}>
+            <option value="">Categoria: automàtica</option>
+            {(Object.keys(CATEGORIES) as Category[]).map((c) => <option key={c} value={c}>{CATEGORIES[c].label}</option>)}
+          </select>
         </div>
         <button type="submit" disabled={pending}
                 className="h-10 self-start rounded-lg bg-accent px-4 text-sm font-semibold text-surface disabled:opacity-60">
@@ -93,7 +99,7 @@ export function SourcesEditor({ sources }: { sources: EditableSource[] }) {
         </button>
         <p className="text-xs text-fg-3">
           Es comprova que el web permeti la lectura automàtica (robots.txt). El municipi serveix per situar els esdeveniments
-          que no diuen on són. Les fonts noves es llegeixen a la propera actualització (cada 6 hores).
+          que no diuen on són; la categoria s&apos;aplica quan el títol no la deixa clara (p. ex. un grup de jocs → Gastronomia/social). Les fonts noves es llegeixen a la propera actualització (cada 6 hores).
         </p>
       </form>
       {state.message && <p className={`text-sm ${state.status === "error" ? "text-gastro" : "text-going"}`}>{state.message}</p>}

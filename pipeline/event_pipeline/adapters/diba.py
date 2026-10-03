@@ -10,7 +10,7 @@ from datetime import date, datetime
 import httpx
 
 from .. import http
-from ..categories import from_keywords
+from ..categories import classify
 from ..geo import DEFAULT_ZONES, in_zones
 from ..models import Category, SourceEvent
 from ..text import parse_price, parse_times, strip_html
@@ -24,7 +24,7 @@ def fetch(client: httpx.Client, dataset: str, today: date) -> list[dict]:
     return data.get("elements", [])
 
 
-def parse_events(raw: list[dict], source: str, today: date, until: date, default_category: Category,
+def parse_events(raw: list[dict], source: str, today: date, until: date, default_category: Category | None,
                  zones=DEFAULT_ZONES) -> list[SourceEvent]:
     out = []
     for e in raw:
@@ -47,7 +47,7 @@ def parse_events(raw: list[dict], source: str, today: date, until: date, default
             price_min=price_min, is_free=is_free, price_text=price_text,
             registration_url=e.get("url_inscripcions") or None, url=e.get("acte_url") or e.get("url_general"),
             image_url=(e.get("imatge") or [None])[0],
-            category=from_keywords(" ".join([title, *tags, *(e.get("tipus") or [])])) or default_category,
+            category=classify(title, *tags, *(e.get("tipus") or []), default=default_category) or "cultura",
             tags=[t.lower() for t in tags if t != address.get("municipi_nom")][:5],
             description=strip_html(e.get("descripcio"))[:2000] or None,
         )

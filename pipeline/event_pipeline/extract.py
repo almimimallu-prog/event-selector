@@ -25,8 +25,11 @@ Rules:
   that require enrolment for the whole course.
 - category: cultura (concerts, theatre, cinema, exhibitions, guided cultural visits, literature),
   esport_natura (hiking, cycling, races, sport, nature outings), formacio_tech (talks, workshops,
-  courses, conferences, technology), gastronomia_social (markets, fairs, food, popular festivals, social),
-  dating (speed dating, singles events and activities meant to meet a partner).
+  courses, conferences, technology), gastronomia_social (markets, fairs, food, popular festivals and
+  anything whose main point is socialising: parties, drinks, happy hours, breakfasts and dinners, boat
+  trips, language exchanges, board games, chess or quiz nights, dance socials), dating (speed dating,
+  "first dates" style events, singles events and activities meant to meet a partner). Choose by the main
+  purpose: a party with a live band is gastronomia_social; a concert is cultura.
 - price_min: lowest price in euros; is_free=true only if explicitly free.
 - detail_url / image_url: copy the URLs from the markdown links/images belonging to that event, if any.
 - summary_ca: one short line in Catalan (max 120 characters) saying what kind of activity it is and the key

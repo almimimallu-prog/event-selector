@@ -216,6 +216,49 @@ def ics_add(store: Store, client, urls: list[str], city: str | None) -> None:
         print(f"✓ {name} ({text.count('BEGIN:VEVENT')} esdeveniments al calendari ara mateix)")
 
 
+RECLASSIFY_ADAPTERS = {"ics", "eventbrite", "jsonld", "tribe"}
+
+
+def reclassify(store: Store, dry_run: bool) -> None:
+    """Torna a classificar els esdeveniments futurs de les fonts sense categories pròpies (Meetup, Eventbrite,
+    webs) amb les regles actuals i la categoria per defecte de cada font. No toca les categories corregides
+    a mà ni els esdeveniments que també vénen d'altres fonts (Agenda Cultural, Gemini...)."""
+    from datetime import date
+
+    from .categories import classify
+
+    sources = {s["id"]: s for s in store.select("sources", select="id,name,config")}
+    links: list[dict] = []
+    while True:  # PostgREST en retorna com a molt 1000 per petició
+        page = store.select("event_sources", order="event_id,raw_item_id", limit="1000", offset=str(len(links)),
+                            select="event_id,source_id,events(title,description,category,locked_fields,start_at,end_at)")
+        links += page
+        if len(page) < 1000:
+            break
+    by_event: dict[str, list] = {}
+    for link in links:
+        if link["events"]:
+            by_event.setdefault(link["event_id"], []).append(link)
+    today = date.today().isoformat()
+    changes = []
+    for event_id, rows in by_event.items():
+        event = rows[0]["events"]
+        if (event["end_at"] or event["start_at"]) < today or "category" in (event["locked_fields"] or []):
+            continue
+        configs = [(sources.get(r["source_id"]) or {}).get("config") or {} for r in rows]
+        if any(c.get("adapter") not in RECLASSIFY_ADAPTERS for c in configs):
+            continue
+        default = next((c["default_category"] for c in configs if c.get("default_category")), None)
+        new = classify(event["title"], event["description"], default=default) or "cultura"
+        if new != event["category"]:
+            changes.append((event_id, event["category"], new, event["title"]))
+    for event_id, old, new, title in changes:
+        print(f"  {old:>18} → {new:<18} {title[:70]}")
+        if not dry_run:
+            store.update("events", {"category": new}, id=f"eq.{event_id}")
+    print(f"{'Es canviarien' if dry_run else '✓ Canviats'}: {len(changes)}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -229,6 +272,8 @@ def main() -> None:
     ig.add_argument("handles", nargs="+")
     ig.add_argument("--city", help="municipi per defecte dels esdeveniments")
     ig.add_argument("--label", help="descripció curta (p. ex. «Teatre de l'Aurora»)")
+    rc = sub.add_parser("reclassify", help="torna a classificar els esdeveniments de Meetup, Eventbrite i webs")
+    rc.add_argument("--dry-run", action="store_true", help="només mostra què canviaria")
     ica = sub.add_parser("ics-add", help="segueix grups de Meetup o calendaris .ics")
     ica.add_argument("urls", nargs="+")
     ica.add_argument("--city", help="municipi per defecte (si el calendari no diu on és)")
@@ -244,6 +289,8 @@ def main() -> None:
             set_password(client, settings, args.email)
         elif args.command == "instagram-setup":
             instagram_setup(client)
+        elif args.command == "reclassify":
+            reclassify(store, args.dry_run)
         elif args.command == "ics-add":
             ics_add(store, client, args.urls, args.city)
         elif args.command == "instagram-add":

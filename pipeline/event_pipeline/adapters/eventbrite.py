@@ -11,7 +11,7 @@ from datetime import date, datetime
 
 import httpx
 
-from ..categories import from_keywords
+from ..categories import classify
 from ..geo import DEFAULT_ZONES, in_zones, locate_municipality
 from ..models import Category, SourceEvent
 from .common import at, end_of, occurrence_days
@@ -78,7 +78,7 @@ def fetch_organizer(client: httpx.Client, token: str, organizer_id: str) -> list
     return events
 
 
-def parse_events(raw: list[dict], today: date, until: date, default_category: Category,
+def parse_events(raw: list[dict], today: date, until: date, default_category: Category | None,
                  zones=DEFAULT_ZONES) -> list[SourceEvent]:
     out = []
     for e in raw:
@@ -104,7 +104,7 @@ def parse_events(raw: list[dict], today: date, until: date, default_category: Ca
             lat=float(lat), lon=float(lon), is_free=e.get("is_free"), price_min=0.0 if e.get("is_free") else None,
             url=e.get("url"), registration_url=e.get("url"),
             image_url=((e.get("logo") or {}).get("original") or {}).get("url") or (e.get("logo") or {}).get("url"),
-            category=from_keywords(f"{title} {category_name}") or default_category,
+            category=classify(title, category_name, default=default_category) or "cultura",
             tags=[category_name.lower()] if category_name else [],
             description=((e.get("description") or {}).get("text") or e.get("summary") or "")[:2000] or None,
             summary_ca=None,

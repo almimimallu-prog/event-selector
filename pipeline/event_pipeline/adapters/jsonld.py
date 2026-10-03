@@ -39,7 +39,7 @@ def _location(event: dict) -> tuple[str | None, str | None, float | None, float 
     return place.get("name"), city, (float(lat) if lat is not None else None), (float(lon) if lon is not None else None)
 
 
-def parse_events(raw: list[dict], source: str, today: date, until: date, default_category: Category,
+def parse_events(raw: list[dict], source: str, today: date, until: date, default_category: Category | None,
                  zones=DEFAULT_ZONES) -> list[SourceEvent]:
     out, seen = [], set()
     for e in raw:
@@ -59,7 +59,7 @@ def parse_events(raw: list[dict], source: str, today: date, until: date, default
             source=source, title=title, venue_name=venue, city=city, lat=lat, lon=lon,
             price_min=price_min, is_free=is_free, price_text=price_text, url=e.get("url"),
             image_url=_first(e.get("image")) if isinstance(_first(e.get("image")), str) else None,
-            category=from_keywords(title) or default_category,
+            category=from_keywords(title) or default_category or "cultura",
             description=strip_html(e.get("description"))[:2000] or None,
         )
         key = f"{source}:{slug(e.get('url') or title)}"

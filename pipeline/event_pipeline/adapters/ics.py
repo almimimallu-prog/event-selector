@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import httpx
 
 from .. import http
-from ..categories import from_keywords
+from ..categories import classify
 from ..config import TIMEZONE
 from ..geo import DEFAULT_ZONES, in_zones, locate_municipality
 from ..models import Category, SourceEvent
@@ -110,7 +110,7 @@ def is_online(location: str | None) -> bool:
     return bool(location) and bool(re.search(r"\bonline\b|en l[ií]nia|virtual|https?://", location, re.I))
 
 
-def parse_events(text: str, source: str, today: date, until: date, default_category: Category,
+def parse_events(text: str, source: str, today: date, until: date, default_category: Category | None,
                  default_city: str | None = None, zones=DEFAULT_ZONES) -> list[SourceEvent]:
     out = []
     for e in parse_calendar(text):
@@ -135,7 +135,7 @@ def parse_events(text: str, source: str, today: date, until: date, default_categ
             source=source, title=title, venue_name=venue, address=address, city=city, lat=lat, lon=lon,
             price_min=price_min, is_free=is_free, price_text=price_text,
             url=_unescape(e["URL"][0]) if "URL" in e else None,
-            category=from_keywords(f"{title} {description or ''}") or default_category,
+            category=classify(title, description, default=default_category) or "cultura",
             description=description or None,
         )
         days = occurrence_days(start.date(), (end or start).date(), today, until)
