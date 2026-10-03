@@ -1,4 +1,4 @@
-export type Category = "cultura" | "esport_natura" | "formacio_tech" | "gastronomia_social";
+export type Category = "cultura" | "esport_natura" | "formacio_tech" | "gastronomia_social" | "dating";
 export type Kind = "session" | "long_running" | "course";
 export type UserState = "interested" | "going" | "dismissed";
 export type DismissReason = "topic" | "too_far" | "bad_time" | "too_expensive" | "bad_data";

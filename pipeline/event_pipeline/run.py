@@ -67,6 +67,20 @@ def resolve_eventbrite(source: dict, client, store: Store, token: str) -> str:
     return ident
 
 
+# Categories noves que la BD potser encara no té (migració pendent): es desen com a una altra mentre tant.
+NEW_CATEGORIES = {"dating": "gastronomia_social"}
+category_fallback: dict[str, str] = {}
+
+
+def check_categories(store: Store) -> None:
+    for category, fallback in NEW_CATEGORIES.items():
+        try:
+            store.select("events", select="id", category=f"eq.{category}", limit="1")
+        except Exception:  # 400: el valor no existeix a l'enum event_category
+            category_fallback[category] = fallback
+            print(f"· Categoria «{category}» encara no és a la BD (aplica la migració): es desa com a «{fallback}»")
+
+
 def record_llm_usage(store: Store, usage) -> None:
     provider = "gemini"
     today = date.today().isoformat()
@@ -178,6 +192,8 @@ def run_source(source: dict, client, store: Store, settings, now: datetime, zone
             status = "not_modified"
         else:
             status = "ok"
+            for item in items:
+                item["category"] = category_fallback.get(item.get("category"), item.get("category"))
             for start in range(0, len(items), BATCH):
                 stats = store.rpc("ingest_events", {"p_source_id": source["id"], "p_items": items[start:start + BATCH]})
                 totals = {k: totals[k] + stats.get(k, 0) for k in totals}
@@ -226,6 +242,7 @@ def main() -> None:
         store = Store(client, settings.supabase_url, settings.supabase_service_role_key)
         ensure_seed_sources(store)
         zones = load_zones(store)
+        check_categories(store)
         filters = {"status": "eq.active", "order": "next_run_at"}
         if not (args.all or args.source):
             filters["next_run_at"] = f"lte.{now.isoformat()}"

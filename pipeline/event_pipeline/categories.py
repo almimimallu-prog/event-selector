@@ -24,6 +24,9 @@ _EXHIBITION = re.compile(r"^\W*(exposició|mostra)\b", re.I)
 
 KEYWORDS: list[tuple[Category, re.Pattern]] = [
     ("cultura", _EXHIBITION),
+    # Abans que formació ("meetup") i social ("festa"): "Speed dating", "Festa per a solters".
+    ("dating", re.compile(r"(speed.?dating|\bdating\b|\bsolter[oae]?s?\b|\bsingles\b|\bsingle (?:night|party|event)|cites? r[àa]pides|"
+                          r"citas? r[áa]pidas|cites? a cegues|citas? a ciegas|lonely hearts)", re.I)),
     ("formacio_tech", re.compile(r"\b(taller|curs|curset|conferència|xerrada|seminari|jornada|col·loqui|"
                                  r"masterclass|formació|hackathon|meetup|programació|robòtica|steam)", re.I)),
     ("esport_natura", re.compile(r"\b(ruta|caminada|excursió|passejada|cursa|marxa|bicicleta|btt|ioga|"

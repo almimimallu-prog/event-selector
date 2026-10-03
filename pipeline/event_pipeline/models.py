@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from .config import TIMEZONE
 
-Category = Literal["cultura", "esport_natura", "formacio_tech", "gastronomia_social"]
+Category = Literal["cultura", "esport_natura", "formacio_tech", "gastronomia_social", "dating"]
 # session: un dia i hora concrets (surt al calendari) · long_running: exposicions i similars (pestanya pròpia)
 # course: curs amb inscripció per a totes les sessions (secció "Cursos"). Coincideix amb l'enum event_kind.
 Kind = Literal["session", "long_running", "course"]

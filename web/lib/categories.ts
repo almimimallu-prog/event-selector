@@ -1,4 +1,4 @@
-import { Drama, Lightbulb, Mountain, Wine, type LucideIcon } from "lucide-react";
+import { Drama, Heart, Lightbulb, Mountain, Wine, type LucideIcon } from "lucide-react";
 import type { Category } from "./types";
 
 export const CATEGORIES: Record<Category, { label: string; icon: LucideIcon; text: string; soft: string; bar: string }> = {
@@ -6,6 +6,7 @@ export const CATEGORIES: Record<Category, { label: string; icon: LucideIcon; tex
   esport_natura: { label: "Esport/natura", icon: Mountain, text: "text-esport", soft: "bg-esport-soft", bar: "border-l-esport" },
   formacio_tech: { label: "Formació/tech", icon: Lightbulb, text: "text-formacio", soft: "bg-formacio-soft", bar: "border-l-formacio" },
   gastronomia_social: { label: "Gastronomia/social", icon: Wine, text: "text-gastro", soft: "bg-gastro-soft", bar: "border-l-gastro" },
+  dating: { label: "Dating", icon: Heart, text: "text-dating", soft: "bg-dating-soft", bar: "border-l-dating" },
 };
 
 export const DISMISS_REASONS = [

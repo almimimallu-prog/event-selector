@@ -23,6 +23,8 @@
   --cat-formacio-soft: #e2eefa;
   --cat-gastro: #c7552b;
   --cat-gastro-soft: #fbe9e2;
+  --cat-dating: #c2347a;
+  --cat-dating-soft: #fbe4ef;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -48,6 +50,8 @@
     --cat-formacio-soft: #1a2e45;
     --cat-gastro: #f0956f;
     --cat-gastro-soft: #43251a;
+    --cat-dating: #f08cbf;
+    --cat-dating-soft: #45192f;
     color-scheme: dark;
   }
 }
@@ -74,6 +78,8 @@
   --color-formacio-soft: var(--cat-formacio-soft);
   --color-gastro: var(--cat-gastro);
   --color-gastro-soft: var(--cat-gastro-soft);
+  --color-dating: var(--cat-dating);
+  --color-dating-soft: var(--cat-dating-soft);
   --font-display: var(--font-display);
   --font-sans: var(--font-body);
 }

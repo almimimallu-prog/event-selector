@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { AvailabilitySlot, Category } from "@/lib/types";
 
-const CATEGORIES: Category[] = ["cultura", "esport_natura", "formacio_tech", "gastronomia_social"];
+const CATEGORIES: Category[] = ["cultura", "esport_natura", "formacio_tech", "gastronomia_social", "dating"];
 const MAX_WORDS = 50;
 
 // user_prefs té una sola fila (id = 1).
