@@ -89,3 +89,33 @@ body {
   color: var(--fg);
   font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
 }
+
+/* Lliscador doble (filtre d'hores): dues barres superposades; només els cercles reben el dit. */
+.range-dual input[type="range"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+  pointer-events: none;
+}
+.range-dual input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  pointer-events: auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--accent);
+  cursor: grab;
+}
+.range-dual input[type="range"]::-moz-range-thumb {
+  pointer-events: auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--accent);
+  cursor: grab;
+}

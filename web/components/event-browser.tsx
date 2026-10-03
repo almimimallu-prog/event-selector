@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarPlus, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Euro, MapPin, Plus, Search, Star } from "lucide-react";
+import { CalendarPlus, CheckCircle2, ChevronDown, Clock, ChevronLeft, ChevronRight, Euro, MapPin, Plus, Search, Star } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -14,11 +14,12 @@ import { AppNav, Brand } from "./app-nav";
 import { EventDetail } from "./event-detail";
 import { EventRow } from "./event-row";
 import { GeoEditor } from "./geo-editor";
+import { type Hours, HoursPanel, hoursLabel } from "./hours-filter";
 import { useMarks } from "./use-marks";
 
 // Filtres ràpids de la pantalla principal: es recorden en aquest navegador.
-type QuickFilters = { off: Category[]; free: boolean };
-const NO_FILTERS: QuickFilters = { off: [], free: false };
+type QuickFilters = { off: Category[]; free: boolean; hours: Hours | null };
+const NO_FILTERS: QuickFilters = { off: [], free: false, hours: null };
 const FILTERS_KEY = "filtres-rapids";
 
 // Lectura amb useSyncExternalStore: al servidor (i en el primer pintat) no hi ha filtres.
@@ -60,7 +61,14 @@ function parseFilters(raw: string): QuickFilters {
 
 function passesQuick(e: AppEvent, f: QuickFilters): boolean {
   if (f.off.includes(e.category)) return false;
-  return !f.free || !!e.is_free || e.price_min === 0;
+  if (f.free && !(e.is_free || e.price_min === 0)) return false;
+  // Franja horària: per l'hora d'inici; els de tot el dia, exposicions i cursos sempre passen.
+  if (f.hours && !e.all_day && e.kind === "session") {
+    const l = local(e.start_at);
+    const hour = l.hour + l.minute / 60;
+    if (hour < f.hours[0] || hour >= f.hours[1]) return false;
+  }
+  return true;
 }
 
 // Quants suggeriments es mostren d'entrada (la resta, amb "Veure'n més"). Els plans propis sempre surten.
@@ -88,6 +96,7 @@ export function EventBrowser(props: Props) {
   const [day, setDay] = useState(props.mode === "calendar" ? props.initialDay : "");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [geoOpen, setGeoOpen] = useState(false);
+  const [hoursOpen, setHoursOpen] = useState(false);
   const [expandedFor, setExpandedFor] = useState<string | null>(null); // dia (o llista) amb "Veure'n més" obert
   const [query, setQuery] = useState("");
   const [reasonsOpen, setReasonsOpen] = useState(false);
@@ -118,7 +127,7 @@ export function EventBrowser(props: Props) {
     const shownIds = new Set(shown.map((e) => e.id));
     return { visible: shown, hiddenByFilters: base.filter((e) => !shownIds.has(e.id)) };
   }, [events, query, filters, prefs.blocked_tags]);
-  const filtersOn = filters.off.length > 0 || filters.free;
+  const filtersOn = filters.off.length > 0 || filters.free || filters.hours != null;
 
   const byDay = useMemo(() => {
     const map = new Map<string, AppEvent[]>();
@@ -287,7 +296,7 @@ export function EventBrowser(props: Props) {
           </div>
         )}
 
-        {/* Filtres ràpids: categories i gratis. */}
+        {/* Filtres ràpids: categories, gratis i franja horària. */}
         <div className="-mx-4 flex items-center gap-1.5 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none]" role="group" aria-label="Filtres ràpids">
           {(Object.keys(CATEGORIES) as Category[]).map((c) => {
             const { label, icon: Icon, text, soft } = CATEGORIES[c];
@@ -305,6 +314,11 @@ export function EventBrowser(props: Props) {
                   className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[13px] font-medium ${filters.free ? "border-transparent bg-accent text-surface" : "border-line bg-surface text-fg-2"}`}>
             <Euro size={14} aria-hidden /> Gratis
           </button>
+          <button type="button" aria-expanded={hoursOpen} onClick={() => setHoursOpen((o) => !o)}
+                  className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[13px] font-medium tabular-nums ${filters.hours ? "border-transparent bg-accent text-surface" : "border-line bg-surface text-fg-2"}`}>
+            <Clock size={14} aria-hidden /> {hoursLabel(filters.hours)}
+            <ChevronDown size={13} className={`transition-transform ${hoursOpen ? "rotate-180" : ""}`} aria-hidden />
+          </button>
           {filtersOn && (
             <button type="button" onClick={() => setFilters(NO_FILTERS)}
                     className="shrink-0 px-1.5 text-[13px] font-medium text-accent underline">
@@ -312,6 +326,8 @@ export function EventBrowser(props: Props) {
             </button>
           )}
         </div>
+
+        {hoursOpen && <HoursPanel value={filters.hours} onChange={(hours) => setFilters({ ...filters, hours })} />}
 
         {props.mode === "calendar" && (
           <div className="flex items-stretch gap-2">
