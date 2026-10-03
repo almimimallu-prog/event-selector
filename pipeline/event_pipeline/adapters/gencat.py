@@ -33,6 +33,9 @@ FIELDS = [
 ]
 
 
+PAGE_SIZE = 10000
+
+
 def fetch(client: httpx.Client, today: date, until: date, zones=DEFAULT_ZONES) -> list[dict]:
     lat_min, lat_max, lon_min, lon_max = bounding_box(zones)
     where = (
@@ -40,9 +43,15 @@ def fetch(client: httpx.Client, today: date, until: date, zones=DEFAULT_ZONES) -
         f"AND longitud between {lon_min:.4f} and {lon_max:.4f} "
         f"AND data_fi >= '{today.isoformat()}' AND data_inici <= '{until.isoformat()}'"
     )
-    params = {"$select": ",".join(FIELDS), "$where": where, "$order": "codi", "$limit": "10000"}
-    response = http.get(client, API_URL, params=params, timeout=60)
-    return response.json()
+    # Amb radis grans (fins a 200 km) es pot passar de 10.000 files: es pagina.
+    rows: list[dict] = []
+    while True:
+        params = {"$select": ",".join(FIELDS), "$where": where, "$order": "codi", "$limit": str(PAGE_SIZE),
+                  "$offset": str(len(rows))}
+        page = http.get(client, API_URL, params=params, timeout=60).json()
+        rows += page
+        if len(page) < PAGE_SIZE:
+            return rows
 
 
 def _slug(text: str) -> str:

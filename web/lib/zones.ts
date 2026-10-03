@@ -2,4 +2,4 @@
 // "use server" només pot exportar funcions.
 export const MAX_ZONES = 2;
 export const MIN_KM = 1;
-export const MAX_KM = 100;
+export const MAX_KM = 200;
