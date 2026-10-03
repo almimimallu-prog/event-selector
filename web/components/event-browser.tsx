@@ -1,24 +1,24 @@
 "use client";
 
-import { CalendarPlus, CheckCircle2, ChevronLeft, ChevronRight, Euro, House, MapPin, Ruler, Search, Star } from "lucide-react";
+import { CalendarPlus, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Euro, MapPin, Search, Star } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { CATEGORIES, DISMISS_REASONS } from "@/lib/categories";
 import { MONTHS_SHORT, WEEKDAYS_SHORT, addDays, dayLabel, local } from "@/lib/dates";
 import { googleCalendarUrl } from "@/lib/links";
-import { LOCAL_COOKIE, LOCAL_RADIUS_KM, homeZone, isNearHome, ofPlace } from "@/lib/local-mode";
+import { zoneLabel } from "@/lib/zones";
 import { score as computeScore, isBlocked, type Score } from "@/lib/ranking";
 import type { AppEvent, Category, Prefs, Zone } from "@/lib/types";
 import { AppNav, Brand } from "./app-nav";
 import { EventDetail } from "./event-detail";
 import { EventRow } from "./event-row";
+import { GeoEditor } from "./geo-editor";
 import { useMarks } from "./use-marks";
 
 // Filtres ràpids de la pantalla principal: es recorden en aquest navegador.
-type QuickFilters = { off: Category[]; free: boolean; maxKm: number | null };
-const NO_FILTERS: QuickFilters = { off: [], free: false, maxKm: null };
+type QuickFilters = { off: Category[]; free: boolean };
+const NO_FILTERS: QuickFilters = { off: [], free: false };
 const FILTERS_KEY = "filtres-rapids";
-const DISTANCES = [5, 10, 20, 50, 100];
 
 // Lectura amb useSyncExternalStore: al servidor (i en el primer pintat) no hi ha filtres.
 const FILTERS_EVENT = "filtres-rapids";
@@ -59,9 +59,7 @@ function parseFilters(raw: string): QuickFilters {
 
 function passesQuick(e: AppEvent, f: QuickFilters): boolean {
   if (f.off.includes(e.category)) return false;
-  if (f.free && !(e.is_free || e.price_min === 0)) return false;
-  // Sense ubicació: no se'n sap la distància, es mostra.
-  return f.maxKm == null || e.zone_km == null || e.zone_km <= f.maxKm;
+  return !f.free || !!e.is_free || e.price_min === 0;
 }
 
 // Punts de densitat: suggeriments amb aquesta puntuació o més (màxim 3 punts per dia).
@@ -73,8 +71,6 @@ type Props = (CalendarProps | ListProps) & {
   events: AppEvent[];
   prefs: Prefs;
   zones: Zone[];
-  /** Mode "Sense sortir d'Igualada" (llegit de la galeta al servidor). */
-  initialLocalOnly?: boolean;
   demo?: boolean;
 };
 
@@ -86,9 +82,7 @@ export function EventBrowser(props: Props) {
   const { events, toggle, dismiss, setNote, error } = useMarks(props.events, demo);
   const [day, setDay] = useState(props.mode === "calendar" ? props.initialDay : "");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [zoneOff, setZoneOff] = useState<Set<string>>(new Set());
-  const [localOnly, setLocalOnly] = useState(!!props.initialLocalOnly);
-  const home = homeZone(zones);
+  const [geoOpen, setGeoOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [reasonsOpen, setReasonsOpen] = useState(false);
   const [showDetail, setShowDetail] = useState(false); // mòbil: la fitxa substitueix la llista
@@ -111,24 +105,14 @@ export function EventBrowser(props: Props) {
     const base = events.filter(
       (e) =>
         e.user_state !== "dismissed" &&
-        (localOnly && home ? isNearHome(e, home) : !(e.zone_name && zoneOff.has(e.zone_name))) &&
         (!q || [e.title, e.venue_name, e.city, ...e.tags].join(" ").toLowerCase().includes(q)) &&
         (isMine(e) || !isBlocked(e, prefs.blocked_tags)),
     );
     const shown = base.filter((e) => isMine(e) || passesQuick(e, filters));
     const shownIds = new Set(shown.map((e) => e.id));
     return { visible: shown, hiddenByFilters: base.filter((e) => !shownIds.has(e.id)) };
-  }, [events, query, zoneOff, localOnly, home, filters, prefs.blocked_tags]);
-  const filtersOn = filters.off.length > 0 || filters.free || filters.maxKm != null;
-
-  function toggleLocalOnly() {
-    const next = !localOnly;
-    setLocalOnly(next);
-    setSelectedId(null);
-    document.cookie = next
-      ? `${LOCAL_COOKIE}=1; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`
-      : `${LOCAL_COOKIE}=; path=/; max-age=0; samesite=lax`;
-  }
+  }, [events, query, filters, prefs.blocked_tags]);
+  const filtersOn = filters.off.length > 0 || filters.free;
 
   const byDay = useMemo(() => {
     const map = new Map<string, AppEvent[]>();
@@ -273,25 +257,13 @@ export function EventBrowser(props: Props) {
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <Brand />
           <AppNav />
-          <div className="flex flex-wrap gap-1.5">
-            {home && (
-              <button type="button" aria-pressed={localOnly} onClick={toggleLocalOnly}
-                      title={`Només el que passa a menys de ${LOCAL_RADIUS_KM} km del centre de ${home.name}`}
-                      className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[13px] font-semibold ${localOnly ? "border-transparent bg-accent text-surface" : "border-line bg-surface text-fg-2"}`}>
-                <House size={14} /> Sense sortir {ofPlace(home.name)}
-              </button>
-            )}
-            {!localOnly && zones.filter((z) => z.active).map((z) => {
-              const on = !zoneOff.has(z.name);
-              return (
-                <button key={z.id} type="button" aria-pressed={on}
-                        onClick={() => setZoneOff((s) => { const n = new Set(s); if (on) n.add(z.name); else n.delete(z.name); return n; })}
-                        className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[13px] font-medium ${on ? "border-transparent bg-accent-soft text-accent" : "border-line bg-surface text-fg-2"}`}>
-                  <MapPin size={14} /> {z.name} · {z.radius_km} km
-                </button>
-              );
-            })}
-          </div>
+          <button type="button" aria-expanded={geoOpen} onClick={() => setGeoOpen((o) => !o)}
+                  title="Municipis i radi"
+                  className="inline-flex min-w-0 items-center gap-1.5 rounded-full border border-transparent bg-accent-soft px-3 py-1 text-[13px] font-medium text-accent">
+            <MapPin size={14} className="shrink-0" aria-hidden />
+            <span className="truncate">{zones.filter((z) => z.active).map(zoneLabel).join(" · ") || "Tria un municipi"}</span>
+            <ChevronDown size={14} className={`shrink-0 transition-transform ${geoOpen ? "rotate-180" : ""}`} aria-hidden />
+          </button>
           <label className="flex min-w-0 flex-1 basis-full items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 py-1.5 md:ml-auto md:max-w-72 md:basis-auto">
             <Search size={17} className="text-fg-3" />
             <input ref={searchRef} value={query} onChange={(e) => setQuery(e.target.value)}
@@ -301,7 +273,13 @@ export function EventBrowser(props: Props) {
           </label>
         </div>
 
-        {/* Filtres ràpids: categories, gratis i distància màxima (no toquen les zones de Configuració). */}
+        {geoOpen && (
+          <div className="rounded-2xl border border-line bg-surface px-4 py-1">
+            <GeoEditor zones={zones.filter((z) => z.active)} />
+          </div>
+        )}
+
+        {/* Filtres ràpids: categories i gratis. */}
         <div className="-mx-4 flex items-center gap-1.5 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none]" role="group" aria-label="Filtres ràpids">
           {(Object.keys(CATEGORIES) as Category[]).map((c) => {
             const { label, icon: Icon, text, soft } = CATEGORIES[c];
@@ -319,15 +297,6 @@ export function EventBrowser(props: Props) {
                   className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[13px] font-medium ${filters.free ? "border-transparent bg-accent text-surface" : "border-line bg-surface text-fg-2"}`}>
             <Euro size={14} aria-hidden /> Gratis
           </button>
-          <label className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[13px] font-medium ${filters.maxKm != null ? "border-transparent bg-accent text-surface" : "border-line bg-surface text-fg-2"}`}>
-            <Ruler size={14} aria-hidden />
-            <select value={filters.maxKm ?? ""} aria-label="Distància màxima"
-                    onChange={(e) => setFilters({ ...filters, maxKm: e.target.value ? Number(e.target.value) : null })}
-                    className="bg-transparent outline-none [&>option]:text-fg">
-              <option value="">Qualsevol distància</option>
-              {DISTANCES.map((km) => <option key={km} value={km}>Fins a {km} km</option>)}
-            </select>
-          </label>
           {filtersOn && (
             <button type="button" onClick={() => setFilters(NO_FILTERS)}
                     className="shrink-0 px-1.5 text-[13px] font-medium text-accent underline">

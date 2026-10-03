@@ -1,7 +1,6 @@
 import { EventBrowser } from "@/components/event-browser";
 import { loadEvents, loadSettings } from "@/lib/data";
 import { addDays, isValidKey, madridMidnight, todayKey, weekStart } from "@/lib/dates";
-import { readLocalOnly } from "@/lib/local-mode-server";
 import { createClient } from "@/lib/supabase/server";
 
 // Calendari: la setmana de ?week=AAAA-MM-DD (per defecte, l'actual).
@@ -22,6 +21,6 @@ export default async function CalendarPage({ searchParams }: PageProps<"/">) {
 
   return (
     <EventBrowser key={start} mode="calendar" weekStart={start} initialDay={initialDay}
-                  events={events} prefs={prefs} zones={zones} initialLocalOnly={await readLocalOnly()} />
+                  events={events} prefs={prefs} zones={zones} />
   );
 }

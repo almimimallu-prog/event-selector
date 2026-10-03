@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { findMunicipality } from "@/lib/municipis";
 import { USER_AGENT, robotsAllows } from "@/lib/robots";
 import { createClient } from "@/lib/supabase/server";
-import type { FormState } from "./zones-actions";
+import type { FormState } from "@/lib/geo-actions";
 
 const TIMEOUT_MS = 15_000;
 

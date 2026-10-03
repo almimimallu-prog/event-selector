@@ -9,7 +9,7 @@ import { BlockedWordsEditor, InterestsEditor } from "./interests-editor";
 import { LearningSummary } from "./learning-summary";
 import { PasswordForm } from "./password-form";
 import { type EditableSource, SourcesEditor } from "./sources-editor";
-import { ZonesEditor } from "./zones-editor";
+import { GeoEditor } from "@/components/geo-editor";
 
 export const metadata = { title: "Configuració · Event Selector" };
 
@@ -42,8 +42,8 @@ export default async function SettingsPage() {
       <h1 className="font-display text-2xl font-medium">Configuració</h1>
 
       <section className="rounded-2xl border border-line bg-surface p-5">
-        <h2 className="mb-3 font-semibold">Zones</h2>
-        <ZonesEditor zones={zones} />
+        <h2 className="mb-1 font-semibold">Municipis i radi</h2>
+        <GeoEditor zones={zones.filter((z) => z.active)} />
       </section>
 
       <section className="rounded-2xl border border-line bg-surface p-5">

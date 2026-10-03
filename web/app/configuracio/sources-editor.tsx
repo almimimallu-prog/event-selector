@@ -3,7 +3,7 @@
 import { ExternalLink, Trash2 } from "lucide-react";
 import { useActionState, useState, useTransition } from "react";
 import { addSource, deleteSource, setSourceActive } from "./sources-actions";
-import type { FormState } from "./zones-actions";
+import type { FormState } from "@/lib/geo-actions";
 
 export type EditableSource = {
   id: string;

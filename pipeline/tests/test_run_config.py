@@ -27,6 +27,11 @@ def test_load_zones_only_active():
     assert run.load_zones(store) == (Zone("Igualada", 41.58, 1.62, 30.0),)
 
 
+def test_load_zones_zero_radius_fetches_municipality():
+    store = FakeStore(zones=[{"name": "Igualada", "lat": 41.58, "lon": 1.62, "radius_km": "0.0", "active": True}])
+    assert run.load_zones(store)[0].radius_km == run.MIN_FETCH_KM
+
+
 def test_load_zones_falls_back_when_missing():
     assert run.load_zones(FakeStore(error=RuntimeError("Supabase 404"))) == DEFAULT_ZONES
     assert run.load_zones(FakeStore(zones=[])) == DEFAULT_ZONES

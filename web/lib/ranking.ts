@@ -70,7 +70,7 @@ export function score(event: AppEvent, prefs: Prefs, zones: Zone[], now = new Da
   const interest = 35 * interestFactor;
 
   const radius = zones.find((z) => z.name === event.zone_name)?.radius_km;
-  let proximity = event.zone_km == null || !radius ? 12 : 25 * (1 - 0.6 * Math.min(1, event.zone_km / radius));
+  let proximity = event.zone_km == null || radius == null ? 12 : 25 * (1 - 0.6 * Math.min(1, event.zone_km / Math.max(radius, 1)));
   const fromHome = homeKm(event, zones);
   if (learning.far_km != null && fromHome != null && fromHome > learning.far_km) proximity *= FAR_FACTOR;
 

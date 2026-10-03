@@ -4,7 +4,7 @@ import { AvailabilityEditor } from "../../configuracio/availability-editor";
 import { BlockedWordsEditor, InterestsEditor } from "../../configuracio/interests-editor";
 import { LearningSummary } from "../../configuracio/learning-summary";
 import { type EditableSource, SourcesEditor } from "../../configuracio/sources-editor";
-import { ZonesEditor } from "../../configuracio/zones-editor";
+import { GeoEditor } from "@/components/geo-editor";
 
 // Vista prèvia dels editors de Configuració amb dades inventades, NOMÉS en desenvolupament.
 // Els botons criden les accions reals, que sense sessió no poden escriure res (RLS).
@@ -31,8 +31,8 @@ export default function DevSettingsPreview() {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-6">
       <section className="rounded-2xl border border-line bg-surface p-5">
-        <h2 className="mb-3 font-semibold">Zones</h2>
-        <ZonesEditor zones={ZONES} />
+        <h2 className="mb-1 font-semibold">Municipis i radi</h2>
+        <GeoEditor zones={ZONES} />
       </section>
       <section className="rounded-2xl border border-line bg-surface p-5">
         <h2 className="mb-1 font-semibold">Interessos</h2>

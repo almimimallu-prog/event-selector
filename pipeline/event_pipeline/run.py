@@ -29,6 +29,7 @@ BATCH = 200
 # Reintents després d'errors seguits: 1 h, 6 h, 24 h.
 BACKOFF_HOURS = [1, 6, 24]
 # Instagram: només publicacions recents i, com a molt, unes quantes per crida a Gemini (una crida per compte).
+MIN_FETCH_KM = 5.0
 INSTAGRAM_MAX_AGE_DAYS = 30
 INSTAGRAM_MAX_POSTS = 6
 
@@ -49,7 +50,8 @@ def load_zones(store: Store) -> tuple[Zone, ...]:
     except Exception as exc:  # p. ex. migració 20261004000000_zone_list.sql encara no aplicada
         print(f"· Zones: no s'han pogut llegir ({exc}); es fan servir les per defecte")
         return DEFAULT_ZONES
-    zones = tuple(Zone(r["name"], r["lat"], r["lon"], float(r["radius_km"])) for r in rows if r["active"])
+    # Radi 0 = només el municipi: les fonts en recullen uns quants km i l'app ja filtra pel nom del municipi.
+    zones = tuple(Zone(r["name"], r["lat"], r["lon"], max(float(r["radius_km"]), MIN_FETCH_KM)) for r in rows if r["active"])
     return zones or DEFAULT_ZONES
 
 
