@@ -115,8 +115,13 @@ def instagram_setup(client) -> None:
         sys.exit(str(exc))
     linked = [p for p in pages if p.get("instagram_business_account")]
     if not linked:
-        sys.exit("Cap pàgina de Facebook teva té un compte d'Instagram professional vinculat (o no has donat permís "
-                 "a la pàgina a l'Explorador). Revisa els passos 1 i 2.")
+        if not pages:
+            sys.exit("El token no dona accés a cap pàgina de Facebook. A l'Explorador, afegeix el permís "
+                     "business_management, torna a clicar «Generate Access Token» i, a la finestra de Meta, tria "
+                     "«Editar configuració» i marca la pàgina i el compte d'Instagram.")
+        names = ", ".join(p.get("name", "?") for p in pages)
+        sys.exit(f"Pàgines visibles amb aquest token: {names}. Cap no té un compte d'Instagram professional vinculat "
+                 "que el token pugui veure: torna a generar el token marcant també el compte d'Instagram.")
     page = linked[0]
     if len(linked) > 1:
         for i, p in enumerate(linked, 1):
