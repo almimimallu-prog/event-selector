@@ -80,7 +80,7 @@ export function SourcesEditor({ sources }: { sources: EditableSource[] }) {
 
       <form action={action} className="flex flex-col gap-2 border-t border-line pt-3">
         <p className="text-sm font-medium">Afegir una font</p>
-        <input name="url" type="text" inputMode="url" autoCapitalize="none" required placeholder="https://… (agenda d'un web, Eventbrite) o @compte d'Instagram"
+        <input name="url" type="text" inputMode="url" autoCapitalize="none" required placeholder="https://… (web, Eventbrite, grup de Meetup, calendari .ics) o @compte d'Instagram"
                aria-label="Enllaç de la font" className={input} />
         <div className="flex flex-wrap gap-2">
           <input name="name" placeholder="Nom (opcional)" aria-label="Nom de la font" className={`${input} min-w-40 flex-1`} />

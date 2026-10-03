@@ -12,7 +12,7 @@ import traceback
 from datetime import date, datetime, timedelta
 
 from . import EXTRACTOR_VERSION
-from .adapters import bcn, diba, eventbrite, gencat, instagram, jsonld, tribe
+from .adapters import bcn, diba, eventbrite, gencat, ics, instagram, jsonld, tribe
 from .clean import html_to_text
 from .geo import DEFAULT_ZONES, Zone
 from .config import TIMEZONE, load_settings
@@ -122,6 +122,10 @@ def collect(source: dict, client, store: Store, settings, now: datetime, zones=D
                                    "content_hash": page_hash, "payload": {"chars": len(text)}, "status": "done",
                                    "extractor_version": EXTRACTOR_VERSION}, on_conflict="source_id,external_id")
         return items, 1
+    if adapter == "ics":
+        raw = ics.fetch(client, source["url"])
+        events = ics.parse_events(raw, "ics", today, until, category, source.get("default_city"), zones)
+        return [item_from_source_event(e) for e in events], 0
     if adapter == "instagram":
         return collect_instagram(source, client, store, settings, now)
     raise ValueError(f"Adaptador desconegut: {adapter!r}")
@@ -209,7 +213,7 @@ def run_source(source: dict, client, store: Store, settings, now: datetime, zone
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--all", action="store_true", help="executa totes les fonts actives, toquin o no")
-    parser.add_argument("--source", choices=["gencat", "bcn", "llm", "diba", "tribe", "jsonld", "eventbrite", "instagram"],
+    parser.add_argument("--source", choices=["gencat", "bcn", "llm", "diba", "tribe", "jsonld", "eventbrite", "instagram", "ics"],
                         help="només un tipus d'adaptador")
     parser.add_argument("--no-summaries", action="store_true", help="no generar explicacions amb Gemini")
     args = parser.parse_args()

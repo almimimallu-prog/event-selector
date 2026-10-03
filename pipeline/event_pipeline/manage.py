@@ -5,11 +5,13 @@
      python -m event_pipeline.manage set-password <correu>
      python -m event_pipeline.manage instagram-setup
      python -m event_pipeline.manage instagram-add <compte> [<compte>...] [--city Igualada] [--label "Teatre"]
+     python -m event_pipeline.manage ics-add <grup de Meetup o calendari .ics> [...] [--city Barcelona]
 """
 
 import argparse
 import getpass
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -17,7 +19,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from .adapters import eventbrite, instagram
+from .adapters import eventbrite, ics, instagram
 from .config import load_settings
 from .geo import locate_municipality
 from .http import make_client
@@ -183,6 +185,37 @@ def instagram_add(store: Store, client, handles: list[str], city: str | None, la
         print(f"✓ @{handle} afegit")
 
 
+def ics_add(store: Store, client, urls: list[str], city: str | None) -> None:
+    """Grups de Meetup (enllaç del grup) o calendaris .ics."""
+    place = locate_municipality(city) if city else None
+    if city and not place:
+        sys.exit(f"No reconec el municipi «{city}».")
+    for raw in urls:
+        url = ics.meetup_ical_url(raw) if "meetup.com" in raw else raw.replace("webcal://", "https://")
+        if not url:
+            print(f"✗ «{raw}» no és l'enllaç d'un grup de Meetup")
+            continue
+        if store.select("sources", select="id", url=f"eq.{url}"):
+            print(f"· {raw}: ja la segueixes")
+            continue
+        try:
+            text = ics.fetch(client, url)
+        except Exception as exc:
+            print(f"✗ {raw}: no s'ha pogut llegir el calendari ({exc})")
+            continue
+        if "BEGIN:VCALENDAR" not in text:
+            print(f"✗ {raw}: no és un calendari iCal")
+            continue
+        m = re.search(r"^X-WR-CALNAME:(.+)$", text, re.M)
+        label = m[1].strip() if m else url
+        name = f"{'Meetup' if 'meetup.com' in url else 'Calendari'}: {label}"
+        store.insert("sources", {
+            "name": name, "type": "ics", "url": url, "config": {"adapter": "ics"}, "schedule_hours": 24,
+            "default_city": place[0] if place else None, "discovered_via": "manual",
+        })
+        print(f"✓ {name} ({text.count('BEGIN:VEVENT')} esdeveniments al calendari ara mateix)")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -196,6 +229,9 @@ def main() -> None:
     ig.add_argument("handles", nargs="+")
     ig.add_argument("--city", help="municipi per defecte dels esdeveniments")
     ig.add_argument("--label", help="descripció curta (p. ex. «Teatre de l'Aurora»)")
+    ica = sub.add_parser("ics-add", help="segueix grups de Meetup o calendaris .ics")
+    ica.add_argument("urls", nargs="+")
+    ica.add_argument("--city", help="municipi per defecte (si el calendari no diu on és)")
     args = parser.parse_args()
 
     load_dotenv()
@@ -208,6 +244,8 @@ def main() -> None:
             set_password(client, settings, args.email)
         elif args.command == "instagram-setup":
             instagram_setup(client)
+        elif args.command == "ics-add":
+            ics_add(store, client, args.urls, args.city)
         elif args.command == "instagram-add":
             instagram_add(store, client, args.handles, args.city, args.label)
         else:

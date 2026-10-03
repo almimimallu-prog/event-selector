@@ -79,10 +79,19 @@ export async function addSource(_prev: FormState, form: FormData): Promise<FormS
 
   let url: URL;
   try {
-    url = new URL(raw);
+    url = new URL(raw.replace(/^webcal:/i, "https:")); // webcal:// = calendari per subscriure-s'hi
     if (!/^https?:$/.test(url.protocol)) throw new Error();
   } catch {
     return { status: "error", message: "Escriu un enllaç complet (https://…) o un compte d'Instagram (@compte)." };
+  }
+
+  // Meetup: la seva API és només per a Meetup Pro; es llegeix el calendari iCal públic del grup.
+  if (/(^|\.)meetup\.com$/.test(url.hostname)) {
+    const group = url.pathname.match(/^\/(?:[a-z]{2}(?:-[A-Z]{2})?\/)?([A-Za-z0-9_-]+)/)?.[1];
+    if (!group || ["find", "topics", "cities", "login", "register", "apps", "pro", "blog", "lp", "help"].includes(group)) {
+      return { status: "error", message: "Enganxa l'enllaç d'un grup de Meetup (meetup.com/nom-del-grup/)." };
+    }
+    url = new URL(`https://www.meetup.com/${group}/events/ical/`);
   }
 
   // Eventbrite: el web prohibeix la lectura automàtica; es fa servir l'API oficial, que necessita el token
@@ -113,19 +122,25 @@ export async function addSource(_prev: FormState, form: FormData): Promise<FormS
     // Sense robots.txt accessible: es considera permès.
   }
   let html: string;
+  let isCalendar = false;
   try {
     const page = await fetchText(url.href);
     if (page.status !== 200) return { status: "error", message: `La pàgina respon amb un error (${page.status}).` };
     html = page.text;
+    isCalendar = page.type.includes("calendar") || html.trimStart().startsWith("BEGIN:VCALENDAR");
   } catch {
     return { status: "error", message: "No s'ha pogut obrir la pàgina (no respon o tarda massa)." };
   }
 
-  const adapter = await detectAdapter(url.href, html);
-  const name = String(form.get("name") ?? "").trim() || pageTitle(html) || url.hostname;
+  // Calendari .ics (Meetup o qualsevol altre): dades estructurades, sense Gemini.
+  const calendarName = isCalendar ? html.match(/^X-WR-CALNAME:(.+)$/m)?.[1]?.trim() : undefined;
+  const adapter = isCalendar ? "ics" : await detectAdapter(url.href, html);
+  const name = String(form.get("name") ?? "").trim()
+    || (isCalendar ? `${url.hostname.endsWith("meetup.com") ? "Meetup" : "Calendari"}: ${calendarName ?? url.hostname}` : pageTitle(html))
+    || url.hostname;
   const { error } = await supabase.from("sources").insert({
     name,
-    type: adapter === "llm" ? "web" : "api",
+    type: adapter === "llm" ? "web" : adapter === "ics" ? "ics" : "api",
     url: url.href,
     config: { adapter },
     schedule_hours: 24,

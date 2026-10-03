@@ -50,6 +50,8 @@ Després, a **Authentication → Sign In / Providers**, desactiva *Allow new use
   pàgina de Facebook i una app de Meta en mode desenvolupament; `python -m event_pipeline.manage instagram-setup` desa
   `INSTAGRAM_TOKEN` i `INSTAGRAM_USER_ID` a `pipeline/.env` (cal copiar-los també als Secrets de GitHub). Els comptes
   s'afegeixen a l'app (Configuració → Fonts, `@compte`) o amb `instagram-add`.
+- **Meetup i calendaris .ics**: l'API de Meetup és només per a Meetup Pro; es llegeix el calendari iCal públic de cada
+  grup (`meetup.com/<grup>/events/ical/`). A l'app n'hi ha prou d'enganxar l'enllaç del grup; també `ics-add`.
 
 ## Seguretat
 El repositori és **públic**: cap clau, llista de fonts ni compte va al codi. Les claus van a `.env` / `.env.local`
