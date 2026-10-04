@@ -269,8 +269,11 @@ export function EventBrowser(props: Props) {
     : hiddenByFilters.length;
 
   return (
-    <div className="mx-auto flex w-full max-w-[1280px] flex-col px-4 pb-20 md:h-dvh md:pb-3">
-      <header className="flex flex-col gap-3 py-3">
+    // Mòbil i escriptori: la pàgina ocupa la pantalla; la capçalera (filtres i dies) queda fixa i només llisca la llista.
+    // pb-20 deixa lloc a la barra inferior del mòbil.
+    <div className="mx-auto flex h-dvh w-full max-w-[1280px] flex-col px-4 pb-20 md:pb-3">
+      {/* Si s'obren els panells (municipis, hores), la capçalera pot créixer fins a mitja pantalla i llavors llisca ella. */}
+      <header className="flex max-h-[60dvh] shrink-0 flex-col gap-3 overflow-y-auto py-3 [scrollbar-width:none]">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <Brand />
           <AppNav />
@@ -374,7 +377,7 @@ export function EventBrowser(props: Props) {
 
       {error && <p className="mb-2 rounded-lg bg-warn-bg px-3 py-2 text-sm text-warn-fg">{error}</p>}
 
-      <main className="grid min-h-0 flex-1 gap-3.5 md:grid-cols-[minmax(0,1fr)_minmax(0,440px)]">
+      <main className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] gap-3.5 md:grid-cols-[minmax(0,1fr)_minmax(0,440px)]">
         <section aria-label={listTitle}
                  className={`min-h-0 flex-col overflow-hidden rounded-2xl border border-line bg-surface ${showDetail ? "hidden md:flex" : "flex"}`}>
           <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-4 pt-3.5 pb-2.5">
