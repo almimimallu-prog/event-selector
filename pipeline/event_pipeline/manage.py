@@ -227,7 +227,7 @@ def reclassify(store: Store, dry_run: bool) -> None:
 
     from .categories import classify
 
-    sources = {s["id"]: s for s in store.select("sources", select="id,name,config")}
+    sources = {s["id"]: s for s in store.select("sources", select="id,name,config,default_category")}
     links: list[dict] = []
     while True:  # PostgREST en retorna com a molt 1000 per petició
         page = store.select("event_sources", order="event_id,raw_item_id", limit="1000", offset=str(len(links)),
@@ -245,10 +245,10 @@ def reclassify(store: Store, dry_run: bool) -> None:
         event = rows[0]["events"]
         if (event["end_at"] or event["start_at"]) < today or "category" in (event["locked_fields"] or []):
             continue
-        configs = [(sources.get(r["source_id"]) or {}).get("config") or {} for r in rows]
-        if any(c.get("adapter") not in RECLASSIFY_ADAPTERS for c in configs):
+        srcs = [sources.get(r["source_id"]) or {} for r in rows]
+        if any((s.get("config") or {}).get("adapter") not in RECLASSIFY_ADAPTERS for s in srcs):
             continue
-        default = next((c["default_category"] for c in configs if c.get("default_category")), None)
+        default = next((d for s in srcs if (d := s.get("default_category") or (s.get("config") or {}).get("default_category"))), None)
         new = classify(event["title"], event["description"], default=default) or "cultura"
         if new != event["category"]:
             changes.append((event_id, event["category"], new, event["title"]))

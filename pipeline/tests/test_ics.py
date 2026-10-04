@@ -75,3 +75,14 @@ def test_default_city_when_no_location():
     text = "BEGIN:VEVENT\nUID:x\nDTSTART:20261009T170000Z\nSUMMARY:Trobada\nEND:VEVENT\n"
     [event] = ics.parse_events(text, "ics", TODAY, UNTIL, "cultura", default_city="Igualada")
     assert event.city == "Igualada" and event.start.hour == 19  # 17:00 UTC → 19:00 a Catalunya
+
+
+def test_skips_online_and_other_cities_by_title():
+    text = "".join(f"BEGIN:VEVENT\nUID:{i}\nDTSTART:20261009T170000Z\nSUMMARY:{t}\nEND:VEVENT\n" for i, t in enumerate([
+        "Public Speaking with Business Speakers TM (On-site Meeting) - Lisbon",
+        "Improve Public Speaking During Lunch! (Online)",
+        "Toastmasters Mijas | Improve Your Public Speaking Skills!",
+        "Oratoria y liderazgo | Mediterranea Toastmasters Barcelona",
+    ]))
+    events = ics.parse_events(text, "ics", TODAY, UNTIL, "formacio_tech", default_city="Barcelona")
+    assert [e.title for e in events] == ["Oratoria y liderazgo | Mediterranea Toastmasters Barcelona"]

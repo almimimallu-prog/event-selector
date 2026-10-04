@@ -102,7 +102,9 @@ def collect(source: dict, client, store: Store, settings, now: datetime, zones=D
     if adapter == "bcn":
         return [item_from_source_event(e) for e in bcn.parse_rows(bcn.fetch(client), today, until, zones)], 0
     config = source.get("config") or {}
-    category = config.get("default_category")  # None: sense categoria pròpia, decideixen les paraules clau
+    # Columna sources.default_category (fonts afegides des de l'app) o config (fonts inicials).
+    # None: sense categoria pròpia, decideixen les paraules clau.
+    category = source.get("default_category") or config.get("default_category")
     if adapter == "diba":
         raw = diba.fetch(client, config["dataset"], today)
         return [item_from_source_event(e) for e in diba.parse_events(raw, config["dataset"], today, until, category, zones)], 0

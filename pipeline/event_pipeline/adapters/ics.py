@@ -110,6 +110,13 @@ def is_online(location: str | None) -> bool:
     return bool(location) and bool(re.search(r"\bonline\b|en l[ií]nia|virtual|https?://", location, re.I))
 
 
+# Meetup no posa LOCATION als calendaris: l'activitat s'assigna al municipi per defecte de la font. Els grups
+# internacionals (Toastmasters, networking...) hi barregen sessions en línia o d'altres ciutats: es descarten pel títol.
+_ONLINE_TITLE = re.compile(r"\bonline\b|en l[ií]ne[ao]|en l[ií]nia|\bzoom\b|\bwebinar\b", re.I)
+_ELSEWHERE = re.compile(r"\b(lisboa|lisbon|ericeira|alg[ée]s|lagoas park|porto|portugal|madrid|val[eè]ncia|mijas|m[áa]laga|"
+                        r"sevilla|seville|vigo|bilbao|zaragoza|granada|tenerife|mallorca|ibiza|london|paris)\b", re.I)
+
+
 def parse_events(text: str, source: str, today: date, until: date, default_category: Category | None,
                  default_city: str | None = None, zones=DEFAULT_ZONES) -> list[SourceEvent]:
     out = []
@@ -117,6 +124,8 @@ def parse_events(text: str, source: str, today: date, until: date, default_categ
         title = _unescape(e.get("SUMMARY", ("", {}))[0])
         start, all_day = _when(e.get("DTSTART"))
         if not title or start is None or e.get("STATUS", ("", {}))[0].upper() == "CANCELLED":
+            continue
+        if _ONLINE_TITLE.search(title) or _ELSEWHERE.search(title):
             continue
         end, _ = _when(e.get("DTEND"))
         location = _unescape(e["LOCATION"][0]) if "LOCATION" in e else None

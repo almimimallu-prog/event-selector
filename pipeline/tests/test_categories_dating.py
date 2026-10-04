@@ -42,3 +42,17 @@ def test_source_default_beats_description():
     description = "Grab a beer and a snack. Networking and drinks after the talks."
     assert classify("BarcelonaJS x Enginy Meetup", description, default="formacio_tech") == "formacio_tech"
     assert classify("BarcelonaJS x Enginy Meetup", description) == "gastronomia_social"  # sense categoria de font
+
+
+def test_language_meetups_and_natural():
+    from event_pipeline.categories import classify
+
+    # 4/10/2026: sortien com a Esport i natura perquè la descripció deia «de manera natural».
+    description = "Vols millorar el teu català parlat de manera natural i divertida?"
+    assert classify("Parlem Català!", description) == "gastronomia_social"
+    assert classify("Xerrem: Parlem català") == "gastronomia_social"
+    assert classify("Catalan conversation practice meetup in Girona") == "gastronomia_social"
+    assert classify("Fira de la transhumància", "natura") == "gastronomia_social"
+    assert classify("Sortida", "Passejada per la natura") == "esport_natura"
+
+    assert classify("SUNDAY DATES EXPRESS (25-35; 36-47) in Barcelona at ALICE SECRET GARDEN") == "dating"

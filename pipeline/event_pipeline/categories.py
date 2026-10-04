@@ -27,13 +27,15 @@ KEYWORDS: list[tuple[Category, re.Pattern]] = [
     # Abans que formació i social ("festa"): "Speed dating", "Festa per a solters", "First Dates Express (25-35)".
     ("dating", re.compile(r"(speed.?dating|\bdating\b|\bsolter[oae]?s?\b|\bsingles\b|\bsingle (?:night|party|event)|"
                           r"cites? r[àa]pides|citas? r[áa]pidas|cites? a cegues|citas? a ciegas|lonely hearts|"
-                          r"first (?:dates?|match)|blind dates?|\bdates? \+?\d\d|\b\w+ dates \+?\d\d|matchmaking|"
+                          r"first (?:dates?|match)|blind dates?|dates? express|\bdates? \+?\d\d|\b\w+ dates \+?\d\d|matchmaking|"
                           r"amor a primera vista|love at first sight)", re.I)),
     # Social inequívoc (en català, castellà i anglès), abans que formació, esport i cultura: "Happy hour + stand up".
     ("gastronomia_social", re.compile(
         r"\b(party|parties|happy hour|after.?work|drinks|cocktails?|beers?|cervesa|cerveza|oktoberfest|"
         r"breakfast|brunch|esmorzar|desayuno|pub crawl|bar crawl|boat|barco|vaixell|karaoke|quiz|trivia|"
-        r"language exchange|intercambio|intercanvi|tandem|board games?|jocs de taula|juegos de mesa|chess|escacs|"
+        r"language exchange|intercambio|intercanvi|tandem|parlem catal\w*|xerrem|conversa en catal\w*|"
+        r"(?:language|conversation|conversa) (?:practice|meetup|club|exchange)|"
+        r"board games?|jocs de taula|juegos de mesa|chess|escacs|"
         r"ajedrez|werewol(?:f|ves)|hombres lobo|game night|nit de jocs|noche de juegos|picnic|meet new people|"
         r"make (?:new )?friends|social (?:night|event|club|hike))", re.I)),
     ("formacio_tech", re.compile(
@@ -42,7 +44,7 @@ KEYWORDS: list[tuple[Category, re.Pattern]] = [
         r"bootcamp|tech\b|coding|programming|python|javascript|wordpress|developers?|startups?|\bai\b|"
         r"machine learning|data science|fintech|blockchain|crypto|defi|invest\w*|inversi\w*|finance|finanzas)", re.I)),
     ("esport_natura", re.compile(
-        r"\b(ruta|caminada|excursió|passejada|cursa|marxa|bicicleta|btt|ioga|esport|natura|senderisme|trail|"
+        r"\b(ruta|caminada|excursió|passejada|cursa|marxa|bicicleta|btt|ioga|esport|natura\b|naturalesa|naturaleza|senderisme|trail|"
         r"pilates|gimnàstica|tai.?txi|hike|hiking|trekking|senderismo|excursión|caminata|running|run\b|yoga|"
         r"bike|cycling|kayak|paddle|surf|climbing|escalada|via verde|via verda)", re.I)),
     ("gastronomia_social", re.compile(
