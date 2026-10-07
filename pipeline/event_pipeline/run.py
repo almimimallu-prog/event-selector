@@ -28,6 +28,9 @@ HORIZON_DAYS = 60
 BATCH = 200
 # Reintents després d'errors seguits: 1 h, 6 h, 24 h.
 BACKOFF_HOURS = [1, 6, 24]
+# El pipeline s'executa un cop al dia i GitHub l'engega amb retards variables (minuts o hores): una font que
+# toca d'aquí a menys d'aquest marge es llegeix ara, perquè les de 24 h no se saltin un dia.
+DUE_MARGIN_HOURS = 3
 # Instagram: només publicacions recents i, com a molt, unes quantes per crida a Gemini (una crida per compte).
 MIN_FETCH_KM = 5.0
 INSTAGRAM_MAX_AGE_DAYS = 30
@@ -247,7 +250,7 @@ def main() -> None:
         check_categories(store)
         filters = {"status": "eq.active", "order": "next_run_at"}
         if not (args.all or args.source):
-            filters["next_run_at"] = f"lte.{now.isoformat()}"
+            filters["next_run_at"] = f"lte.{(now + timedelta(hours=DUE_MARGIN_HOURS)).isoformat()}"
         sources = store.select("sources", **filters)
         if args.source:
             sources = [s for s in sources if (s.get("config") or {}).get("adapter") == args.source]
