@@ -6,6 +6,12 @@ import { local, shortDate } from "@/lib/dates";
 import { nearestZoneLabel } from "@/lib/ranking";
 import type { AppEvent } from "@/lib/types";
 
+// Imatge que no carrega (p. ex. enllaços d'Instagram caducats): s'amaga i queda la icona de la categoria.
+// No es pot treure del DOM (e.currentTarget.remove()): React la intentaria treure després i petaria en canviar de dia.
+export const hideBroken = (e: React.SyntheticEvent<HTMLImageElement>) => {
+  e.currentTarget.style.display = "none";
+};
+
 export function Thumb({ event, size = 56 }: { event: AppEvent; size?: number }) {
   const cat = CATEGORIES[event.category];
   const Icon = cat.icon;
@@ -17,8 +23,8 @@ export function Thumb({ event, size = 56 }: { event: AppEvent; size?: number }) 
       <Icon size={size * 0.45} strokeWidth={1.75} aria-hidden />
       {event.image_url && (
         // eslint-disable-next-line @next/next/no-img-element -- imatges de qualsevol domini de les fonts
-        <img src={event.image_url} alt="" loading="lazy" className="absolute inset-0 size-full object-cover"
-             onError={(e) => e.currentTarget.remove()} />
+        <img key={event.image_url} src={event.image_url} alt="" loading="lazy" className="absolute inset-0 size-full object-cover"
+             onError={hideBroken} />
       )}
     </div>
   );

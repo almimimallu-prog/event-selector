@@ -11,7 +11,7 @@ import { googleCalendarUrl, mapsUrl } from "@/lib/links";
 import { nearestZoneLabel, type Score } from "@/lib/ranking";
 import { createClient } from "@/lib/supabase/client";
 import type { AppEvent, DismissReason } from "@/lib/types";
-import { CategoryChip, explanation, priceLabel } from "./event-row";
+import { CategoryChip, explanation, hideBroken, priceLabel } from "./event-row";
 
 const btn = "inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm font-medium hover:bg-surface-2";
 const Kbd = ({ k }: { k: string }) => (
@@ -92,8 +92,8 @@ export function EventDetail(props: Props) {
         <p className="relative z-10 max-w-[85%] font-display text-2xl leading-tight font-bold text-balance">{event.title}</p>
         {event.image_url && (
           // eslint-disable-next-line @next/next/no-img-element -- imatges de qualsevol domini de les fonts
-          <img src={event.image_url} alt="" className="absolute inset-0 z-20 size-full object-cover"
-               onError={(e) => e.currentTarget.remove()} />
+          <img key={event.image_url} src={event.image_url} alt="" className="absolute inset-0 z-20 size-full object-cover"
+               onError={hideBroken} />
         )}
       </div>
 
