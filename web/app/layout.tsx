@@ -18,6 +18,9 @@ export const metadata: Metadata = {
   applicationName: "Event Selector",
   icons: { icon: "/icon.svg", apple: "/apple-icon.png" },
   appleWebApp: { capable: true, title: "Events", statusBarStyle: "default" },
+  // El traductor de Chrome substitueix els textos per <font> propis i React deixa d'actualitzar la llista
+  // (es queda buida o congelada en cercar o marcar «Hi vaig»): l'app és en català i no s'ha de traduir.
+  other: { google: "notranslate" },
 };
 
 export const viewport: Viewport = {
@@ -29,7 +32,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ca" className={`${display.variable} ${body.variable} h-full antialiased`}>
+    <html lang="ca" translate="no" className={`${display.variable} ${body.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
