@@ -152,6 +152,8 @@ export function EventBrowser(props: Props) {
 
   const selected = ordered.all.find((e) => e.id === selectedId) ?? (showDetail ? null : ordered.all[0] ?? null);
   const selectedIndex = selected ? ordered.all.indexOf(selected) : -1;
+  // Mòbil: una fitxa sense pla (p. ex. el pla ha quedat fora pels filtres) mostra la llista en lloc d'una pantalla buida.
+  const detailOpen = showDetail && selected !== null;
 
   function select(id: string | null, openOnMobile = true) {
     setSelectedId(id);
@@ -186,6 +188,7 @@ export function EventBrowser(props: Props) {
     setDay(key);
     setSelectedId(null);
     setReasonsOpen(false);
+    if (showDetail) closeDetail(); // mòbil: amb la fitxa oberta, canviar de dia torna a la llista del dia nou
     listRef.current?.scrollTo({ top: 0 });
   }
 
@@ -286,7 +289,7 @@ export function EventBrowser(props: Props) {
           </button>
           <label className="flex min-w-0 flex-1 basis-full items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 py-1.5 md:ml-auto md:max-w-72 md:basis-auto">
             <Search size={17} className="text-fg-3" />
-            <input ref={searchRef} value={query} onChange={(e) => setQuery(e.target.value)}
+            <input ref={searchRef} value={query} onChange={(e) => { setQuery(e.target.value); if (showDetail) closeDetail(); }}
                    placeholder="Cerca: jazz, excursió, taller…" aria-label="Cerca"
                    className="w-full min-w-0 bg-transparent text-sm outline-none" />
             <kbd className="hidden rounded border border-b-2 border-line px-1 text-[11px] text-fg-2 md:inline">/</kbd>
@@ -379,7 +382,7 @@ export function EventBrowser(props: Props) {
 
       <main className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] gap-3.5 md:grid-cols-[minmax(0,1fr)_minmax(0,440px)]">
         <section aria-label={listTitle}
-                 className={`min-h-0 flex-col overflow-hidden rounded-2xl border border-line bg-surface ${showDetail ? "hidden md:flex" : "flex"}`}>
+                 className={`min-h-0 flex-col overflow-hidden rounded-2xl border border-line bg-surface ${detailOpen ? "hidden md:flex" : "flex"}`}>
           <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-4 pt-3.5 pb-2.5">
             <h1 className="flex items-center gap-2 font-display text-xl font-medium">
               {listTitle}
@@ -423,7 +426,7 @@ export function EventBrowser(props: Props) {
         </section>
 
         <aside aria-label="Fitxa de l'esdeveniment" onPointerDown={onDetailPointerDown} onPointerUp={onDetailPointerUp}
-               className={`min-h-0 touch-pan-y overflow-y-auto rounded-2xl border border-line bg-surface ${showDetail ? "block" : "hidden md:block"}`}>
+               className={`min-h-0 touch-pan-y overflow-y-auto rounded-2xl border border-line bg-surface ${detailOpen ? "block" : "hidden md:block"}`}>
           <EventDetail event={selected} score={selected ? scores.get(selected.id)! : null} nearby={nearby}
                        onToggle={toggle} onDismiss={(e, r) => { dismiss(e, r); setReasonsOpen(false); }} onNote={setNote}
                        onSelect={(id) => select(id)} onBack={closeDetail}
