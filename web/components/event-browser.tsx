@@ -429,7 +429,7 @@ export function EventBrowser(props: Props) {
                className={`min-h-0 touch-pan-y overflow-y-auto rounded-2xl border border-line bg-surface ${detailOpen ? "block" : "hidden md:block"}`}>
           <EventDetail event={selected} score={selected ? scores.get(selected.id)! : null} nearby={nearby}
                        onToggle={toggle} onDismiss={(e, r) => { dismiss(e, r); setReasonsOpen(false); }} onNote={setNote}
-                       onSelect={(id) => select(id)} onBack={closeDetail}
+                       onSelect={(id) => select(id)}
                        reasonsOpen={reasonsOpen} setReasonsOpen={setReasonsOpen} demo={demo} />
         </aside>
       </main>

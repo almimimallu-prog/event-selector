@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  Accessibility, ArrowLeft, CalendarPlus, CheckCircle2, Clock, Hourglass, MapPin, Share2, Star, Ticket,
+  Accessibility, CalendarPlus, CheckCircle2, Clock, Hourglass, MapPin, Share2, Star, Ticket,
   TriangleAlert, X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -37,14 +37,13 @@ type Props = {
   onDismiss: (e: AppEvent, r: DismissReason | null) => void;
   onNote: (e: AppEvent, note: string) => void;
   onSelect: (id: string) => void;
-  onBack: () => void;
   reasonsOpen: boolean;
   setReasonsOpen: (open: boolean) => void;
   demo?: boolean;
 };
 
 export function EventDetail(props: Props) {
-  const { event, score, nearby, onToggle, onDismiss, onNote, onSelect, onBack, reasonsOpen, setReasonsOpen, demo } = props;
+  const { event, score, nearby, onToggle, onDismiss, onNote, onSelect, reasonsOpen, setReasonsOpen, demo } = props;
   const [series, setSeries] = useState<{ key: string; items: { id: string; start_at: string; all_day: boolean }[] }>();
 
   useEffect(() => {
@@ -84,9 +83,6 @@ export function EventDetail(props: Props) {
 
   return (
     <article className="pb-6">
-      <button type="button" onClick={onBack} className={`${btn} m-3 md:hidden`}>
-        <ArrowLeft size={16} /> Tornar a la llista
-      </button>
       <div className={`relative flex aspect-[16/10] max-w-full items-end overflow-hidden p-5 ${cat.soft} ${cat.text}`}>
         <Icon size={64} strokeWidth={1.5} className="absolute top-5 left-5 opacity-80" aria-hidden />
         <p className="relative z-10 max-w-[85%] font-display text-2xl leading-tight font-bold text-balance">{event.title}</p>
