@@ -22,7 +22,7 @@ from .gemini import QuotaExceeded
 from .http import get, make_client
 from .sources import SEED_SOURCES, content_hash, item_from_extracted, item_from_source_event
 from .store import Store
-from . import summarize
+from . import discover, summarize
 
 HORIZON_DAYS = 60
 BATCH = 200
@@ -233,6 +233,19 @@ def run_source(source: dict, client, store: Store, settings, now: datetime, zone
         return False
 
 
+def discover_sources(client, store: Store, now: datetime) -> None:
+    """Comptes mencionats pels que seguim → «Fonts proposades». Un error aquí no fa fallar l'execució."""
+    token, ig_user_id = os.getenv("INSTAGRAM_TOKEN"), os.getenv("INSTAGRAM_USER_ID")
+    if not token or not ig_user_id:
+        return
+    try:
+        proposed = discover.run(store, now, lambda h: instagram.fetch_profile(client, token, ig_user_id, h))
+        if proposed:
+            print(f"✓ Fonts proposades noves: {proposed}")
+    except Exception as exc:
+        print(f"· Descobriment de fonts: {type(exc).__name__}: {exc}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--all", action="store_true", help="executa totes les fonts actives, toquin o no")
@@ -263,6 +276,8 @@ def main() -> None:
         if not sources:
             print("Cap font per executar ara.")
         results = [run_source(source, client, store, settings, now, zones) for source in sources]
+        if args.source in (None, "instagram"):
+            discover_sources(client, store, now)
         if not args.no_summaries:
             try:
                 done = summarize.run(client, store, settings.gemini_api_key, now, record_llm_usage)

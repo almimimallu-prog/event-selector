@@ -10,6 +10,7 @@ import { AvailabilityEditor } from "./availability-editor";
 import { BlockedWordsEditor, InterestsEditor } from "./interests-editor";
 import { LearningSummary } from "./learning-summary";
 import { PasswordForm } from "./password-form";
+import { type Proposal, ProposedSources } from "./proposed-sources";
 import { type EditableSource, SourcesEditor } from "./sources-editor";
 import { GeoEditor } from "@/components/geo-editor";
 
@@ -24,7 +25,7 @@ async function signOut() {
 
 export default async function SettingsPage() {
   const supabase = await createClient();
-  const [{ zones, prefs }, sources, claims, toReview] = await Promise.all([
+  const [{ zones, prefs }, sources, claims, toReview, proposed] = await Promise.all([
     loadSettings(supabase),
     supabase
       .from("sources")
@@ -34,7 +35,16 @@ export default async function SettingsPage() {
       .order("name"),
     supabase.auth.getClaims(),
     reviewCount(supabase),
+    supabase.from("sources").select("id, name, url, handle, discovery_note, config").eq("status", "proposed"),
   ]);
+  const proposals: Proposal[] = (proposed.data ?? []).map((s) => {
+    const config = (s.config ?? {}) as { mentions?: number; mentioned_by?: string[]; website?: string | null; followers?: number | string | null };
+    return {
+      id: s.id, name: s.name, handle: s.handle ?? "", url: s.url, note: s.discovery_note,
+      mentions: config.mentions ?? 0, mentionedBy: config.mentioned_by ?? [], website: config.website ?? null,
+      followers: config.followers != null ? Number(config.followers) || null : null,
+    };
+  });
   const sourceRows: EditableSource[] = (sources.data ?? []).map(({ config, ...s }) => ({
     ...s,
     adapter: (config as { adapter?: string } | null)?.adapter ?? null,
@@ -83,7 +93,10 @@ export default async function SettingsPage() {
 
       <section className="rounded-2xl border border-line bg-surface p-5">
         <h2 className="mb-3 font-semibold">Fonts</h2>
-        <SourcesEditor sources={sourceRows} />
+        <div className="flex flex-col gap-3">
+          <ProposedSources proposals={proposals} />
+          <SourcesEditor sources={sourceRows} />
+        </div>
       </section>
 
       <section className="rounded-2xl border border-line bg-surface p-5">

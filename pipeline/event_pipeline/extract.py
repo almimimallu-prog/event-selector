@@ -35,7 +35,9 @@ Rules:
 - summary_ca: one short line in Catalan (max 120 characters) saying what kind of activity it is and the key
   detail ("Comèdia teatral de Jordi Casanovas", "Concert de jazz manouche"). No marketing tone, and do not
   repeat the title, date, time, price or place.
-- tags: up to 5 short lowercase Catalan tags (e.g. "infantil", "música", "visita guiada").
+- tags: up to 5 short lowercase Catalan tags (e.g. "infantil", "música", "visita guiada"). Use "infantil"
+  ONLY when the activity is aimed at children (kids' theatre, children's workshop); if it is for all ages or
+  for families, use "familiar" instead and never "infantil" (the user hides everything tagged "infantil").
 - is_event=false for items that are not attendable events (news, ads, generic opening hours).
 - confidence: 0-1, how sure you are that date, place and title are correct.
 - If there are no events, return {"events": []}."""

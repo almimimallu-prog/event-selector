@@ -72,6 +72,21 @@ def fetch_posts(client: httpx.Client, token: str, ig_user_id: str, handle: str, 
     return [p for p in (parse_post(m) for m in media) if p]
 
 
+PROFILE_FIELDS = "username,name,biography,website,followers_count"
+
+
+def fetch_profile(client: httpx.Client, token: str, ig_user_id: str, handle: str) -> dict | None:
+    """Nom, bio i web d'un compte professional (descobriment de fonts). None si no existeix o no és professional."""
+    try:
+        data = _get(client, token, ig_user_id, fields=f"business_discovery.username({handle}){{{PROFILE_FIELDS}}}")
+    except InstagramError as exc:
+        text = str(exc).lower()
+        if "business_discovery" in text or "cannot be found" in text or "(#110)" in text or "invalid user id" in text:
+            return None
+        raise
+    return data.get("business_discovery") or None
+
+
 def parse_post(media: dict) -> Post | None:
     if not media.get("id") or not media.get("timestamp"):
         return None

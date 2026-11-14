@@ -3,6 +3,7 @@ import { municipalityNames } from "@/lib/municipis";
 import { AvailabilityEditor } from "../../configuracio/availability-editor";
 import { BlockedWordsEditor, InterestsEditor } from "../../configuracio/interests-editor";
 import { LearningSummary } from "../../configuracio/learning-summary";
+import { type Proposal, ProposedSources } from "../../configuracio/proposed-sources";
 import { type EditableSource, SourcesEditor } from "../../configuracio/sources-editor";
 import { GeoEditor } from "@/components/geo-editor";
 
@@ -21,6 +22,15 @@ const SOURCES: EditableSource[] = [
   { ...base, id: "e", name: "Instagram: @teatreaurora", url: "https://www.instagram.com/teatreaurora/", status: "active", discovered_via: "manual", last_success_at: new Date().toISOString(), adapter: "instagram" },
   { ...base, id: "f", name: "Instagram: @cafeigualada (Cafè)", url: "https://www.instagram.com/cafeigualada/", status: "active", discovered_via: "manual", last_success_at: null, consecutive_failures: 1, last_error: "@cafeigualada no existeix o no és un compte professional", adapter: "instagram" },
   { ...base, id: "g", name: "Meetup: Barcelona Board Games", url: "https://www.meetup.com/bcn-board-games/events/ical/", status: "active", discovered_via: "manual", last_success_at: new Date().toISOString(), adapter: "ics" },
+];
+
+const PROPOSALS: Proposal[] = [
+  { id: "p1", name: "Instagram: @festivaldau (Festival DAU Barcelona)", handle: "festivaldau", url: "https://www.instagram.com/festivaldau/",
+    note: "🎲 15è festival del joc DAU Barcelona\n🎟️ Entrada gratuïta!", mentions: 3, mentionedBy: ["planesenbarcelona", "timeoutbcn"],
+    website: "https://linktr.ee/festivaldaubarcelona", followers: 5725 },
+  { id: "p2", name: "Instagram: @tapantoni (Tapantoni)", handle: "tapantoni", url: "https://www.instagram.com/tapantoni/",
+    note: "Ruta de tapes pel barri de Sant Antoni", mentions: 1, mentionedBy: ["planesenbarcelona"],
+    website: "https://tapantoni.com/", followers: 2100 },
 ];
 
 const LEARNING = {
@@ -55,7 +65,10 @@ export default function DevSettingsPreview() {
       </section>
       <section className="rounded-2xl border border-line bg-surface p-5">
         <h2 className="mb-3 font-semibold">Fonts</h2>
-        <SourcesEditor sources={SOURCES} />
+        <div className="flex flex-col gap-3">
+          <ProposedSources proposals={PROPOSALS} />
+          <SourcesEditor sources={SOURCES} />
+        </div>
       </section>
       <datalist id="municipis">
         {municipalityNames().map((n) => <option key={n} value={n} />)}

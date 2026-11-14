@@ -168,6 +168,37 @@ export async function setSourceActive(id: string, active: boolean): Promise<stri
   return null;
 }
 
+// ─── «Fonts proposades» (el pipeline les troba seguint les @mencions dels comptes que segueixes) ───
+
+async function setProposalStatus(id: string, status: "active" | "rejected"): Promise<string | null> {
+  const supabase = await createClient();
+  const values = status === "active" ? { status, next_run_at: new Date().toISOString() } : { status };
+  const { error } = await supabase.from("sources").update(values).eq("id", id).eq("status", "proposed");
+  if (error) return error.message;
+  revalidatePath("/configuracio");
+  return null;
+}
+
+/** Segueix el compte d'Instagram proposat: es llegirà a la propera actualització. */
+export async function followProposal(id: string): Promise<string | null> {
+  return setProposalStatus(id, "active");
+}
+
+/** No el vull: no es tornarà a proposar. */
+export async function dismissProposal(id: string): Promise<string | null> {
+  return setProposalStatus(id, "rejected");
+}
+
+/** Afegeix el web del compte proposat (amb les comprovacions de sempre) i treu la proposta de la safata. */
+export async function addProposalWebsite(id: string, website: string): Promise<FormState> {
+  const form = new FormData();
+  form.set("url", website.trim());
+  const result = await addSource({ status: "idle" }, form);
+  if (result.status !== "ok") return result;
+  const error = await setProposalStatus(id, "rejected");
+  return error ? { status: "error", message: error } : result;
+}
+
 export async function deleteSource(id: string): Promise<string | null> {
   const supabase = await createClient();
   const { data } = await supabase.from("sources").select("discovered_via").eq("id", id).maybeSingle();
