@@ -41,6 +41,35 @@ async function detectAdapter(url: string, html: string): Promise<"tribe" | "json
   return "llm";
 }
 
+type LumaEntity = { api_id?: string; name?: string; is_personal?: boolean };
+type LumaPage = { place?: LumaEntity; calendar?: LumaEntity; event?: LumaEntity };
+
+/**
+ * Luma: cada calendari i cada pàgina de ciutat té un calendari .ics públic (el que llegeix el pipeline).
+ * Pàgina de ciutat (luma.com/barcelona) → els plans de la ciutat; calendari (luma.com/nom) → el calendari;
+ * pla (luma.com/abc123) → el calendari de qui l'organitza. Les dades són a __NEXT_DATA__ de la pàgina.
+ */
+async function lumaCalendar(href: string): Promise<{ ics: string; name: string } | null> {
+  const page = await fetchText(href);
+  const json = page.text.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/)?.[1];
+  if (page.status !== 200 || !json) return null;
+  let data: LumaPage | undefined;
+  try {
+    data = JSON.parse(json)?.props?.pageProps?.initialData?.data;
+  } catch {
+    return null;
+  }
+  const ics = (entity: string, id: string) => `https://api.luma.com/ics/get?entity=${entity}&id=${encodeURIComponent(id)}`;
+  if (data?.place?.api_id?.startsWith("discplace-")) {
+    return { ics: ics("discover", data.place.api_id), name: `Luma: ${data.place.name ?? "ciutat"}` };
+  }
+  const calendar = data?.calendar;
+  if (!calendar?.api_id?.startsWith("cal-")) return null;
+  const personal = calendar.is_personal || !calendar.name || calendar.name === "Personal";
+  const name = !personal ? calendar.name : data?.event?.name ? `organitzador de «${data.event.name.slice(0, 50)}»` : "calendari personal";
+  return { ics: ics("calendar", calendar.api_id), name: `Luma: ${name}` };
+}
+
 /** '@compte' o 'https://www.instagram.com/compte/' → 'compte' (com adapters/instagram.py). */
 function instagramHandle(text: string): string | null {
   const m = text.match(/instagram\.com\/([A-Za-z0-9_.]+)/) ?? text.match(/^@([A-Za-z0-9_.]{1,30})$/);
@@ -98,6 +127,22 @@ export async function addSource(_prev: FormState, form: FormData): Promise<FormS
     url = new URL(`https://www.meetup.com/${group}/events/ical/`);
   }
 
+  // Luma: es desa el calendari .ics de la pàgina (ciutat, calendari o organitzador d'un pla). Sense Gemini.
+  let lumaName: string | undefined;
+  if (/(^|\.)(luma\.com|lu\.ma)$/.test(url.hostname) && url.hostname !== "api.luma.com") {
+    let luma: Awaited<ReturnType<typeof lumaCalendar>> = null;
+    try {
+      luma = await lumaCalendar(url.href);
+    } catch {
+      return { status: "error", message: "No s'ha pogut obrir la pàgina de Luma (no respon o tarda massa)." };
+    }
+    if (!luma) {
+      return { status: "error", message: "No trobo el calendari d'aquesta pàgina de Luma. Enganxa l'enllaç d'una ciutat (luma.com/barcelona), d'un calendari o d'un pla." };
+    }
+    url = new URL(luma.ics);
+    lumaName = luma.name;
+  }
+
   // Eventbrite: el web prohibeix la lectura automàtica; es fa servir l'API oficial, que necessita el token
   // del pipeline. Es desa l'enllaç i el pipeline en busca l'organitzador a la propera execució.
   if (/(^|\.)eventbrite\.[a-z.]+$/.test(url.hostname)) {
@@ -139,7 +184,7 @@ export async function addSource(_prev: FormState, form: FormData): Promise<FormS
   // Calendari .ics (Meetup o qualsevol altre): dades estructurades, sense Gemini.
   const calendarName = isCalendar ? html.match(/^X-WR-CALNAME:(.+)$/m)?.[1]?.trim() : undefined;
   const adapter = isCalendar ? "ics" : await detectAdapter(url.href, html);
-  const name = String(form.get("name") ?? "").trim()
+  const name = String(form.get("name") ?? "").trim() || lumaName
     || (isCalendar ? `${url.hostname.endsWith("meetup.com") ? "Meetup" : "Calendari"}: ${calendarName ?? url.hostname}` : pageTitle(html))
     || url.hostname;
   const { error } = await supabase.from("sources").insert({

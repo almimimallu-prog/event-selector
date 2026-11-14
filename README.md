@@ -62,6 +62,9 @@ Després, a **Authentication → Sign In / Providers**, desactiva *Allow new use
   pàgina de Facebook i una app de Meta en mode desenvolupament; `python -m event_pipeline.manage instagram-setup` desa
   `INSTAGRAM_TOKEN` i `INSTAGRAM_USER_ID` a `pipeline/.env` (cal copiar-los també als Secrets de GitHub). Els comptes
   s'afegeixen a l'app (Configuració → Fonts, `@compte`) o amb `instagram-add`.
+- **Luma**: cada calendari i cada pàgina de ciutat tenen un `.ics` públic (`api.luma.com/ics/get`). A l'app n'hi ha
+  prou d'enganxar l'enllaç d'una ciutat (`luma.com/barcelona`), d'un calendari o d'un pla (se segueix el calendari
+  de l'organitzador). L'enllaç de cada pla surt de la descripció del `.ics`.
 - **Meetup i calendaris .ics**: l'API de Meetup és només per a Meetup Pro; es llegeix el calendari iCal públic de cada
   grup (`meetup.com/<grup>/events/ical/`). A l'app n'hi ha prou d'enganxar l'enllaç del grup; també `ics-add`.
 

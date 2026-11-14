@@ -46,6 +46,26 @@ END:VCALENDAR\r
 """
 
 
+LUMA = (
+    "BEGIN:VCALENDAR\r\nX-WR-CALNAME:What‘s Happening in Barcelona\r\nBEGIN:VEVENT\r\n"
+    "DTSTART:20261114T173000Z\r\nDTEND:20261114T203000Z\r\n"
+    "UID:evt-B6v6fvCR2HxELMT@events.lu.ma\r\n"
+    "SUMMARY:In Her Gestures · Artist Talk & Tea Ceremony\r\n"
+    "DESCRIPTION:Get up-to-date information at: https://luma.com/g8hs4i0g\\n\\nAd\r\n"
+    " dress:\\nNauArt\\nBarcelona\\, Spain\\n\\nJoin us for an intimate gathering.\r\n"
+    "LOCATION:NauArt\\, Carrer d'Espronceda\\, 154\\, 08018 Barcelona\\, Spain\r\n"
+    "GEO:41.4086232;2.2005867\r\nSTATUS:TENTATIVE\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+)
+
+
+def test_luma_link_comes_from_the_description():
+    [event] = ics.parse_events(LUMA, "ics", TODAY, UNTIL, None, "Barcelona")
+    assert event.url == "https://luma.com/g8hs4i0g"
+    assert not event.description.startswith("Get up-to-date")  # la coletilla de Luma no és part de la descripció
+    assert "intimate gathering" in event.description
+    assert event.venue_name == "NauArt" and round(event.lat, 3) == 41.409
+
+
 def test_meetup_ical_url():
     assert ics.meetup_ical_url("https://www.meetup.com/barcelonajs/") == "https://www.meetup.com/barcelonajs/events/ical/"
     assert ics.meetup_ical_url("https://www.meetup.com/es-ES/barcelonajs/events/316793592/") == \

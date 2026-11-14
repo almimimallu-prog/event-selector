@@ -117,6 +117,19 @@ _ELSEWHERE = re.compile(r"\b(lisboa|lisbon|ericeira|alg[ée]s|lagoas park|porto|
                         r"sevilla|seville|vigo|bilbao|zaragoza|granada|tenerife|mallorca|ibiza|london|paris)\b", re.I)
 
 
+# Luma no omple URL: l'enllaç de la fitxa va al principi de la descripció.
+_LUMA_LINK = re.compile(r"^\s*Get up-to-date information at:\s*(https?://\S+)\s*", re.I)
+
+
+def _link_and_description(e: dict) -> tuple[str | None, str | None]:
+    url = _unescape(e["URL"][0]) if "URL" in e else None
+    text = _unescape(e["DESCRIPTION"][0]) if "DESCRIPTION" in e else ""
+    if (m := _LUMA_LINK.match(text)):
+        url, text = url or m[1], text[m.end():]
+    description = strip_html(text)[:2000] if text else None
+    return url, description or None
+
+
 def parse_events(text: str, source: str, today: date, until: date, default_category: Category | None,
                  default_city: str | None = None, zones=DEFAULT_ZONES) -> list[SourceEvent]:
     out = []
@@ -134,7 +147,7 @@ def parse_events(text: str, source: str, today: date, until: date, default_categ
         venue, address, city, lat, lon = _place(location, e.get("GEO", (None, {}))[0], default_city)
         if lat is not None and not in_zones(lat, lon, zones):
             continue
-        description = strip_html(_unescape(e["DESCRIPTION"][0]))[:2000] if "DESCRIPTION" in e else None
+        url, description = _link_and_description(e)
         price_min, is_free, price_text = parse_price(None)
         uid = e.get("UID", (None, {}))[0]
         key = f"{source}:{slug(uid or title + start.date().isoformat())}"
@@ -143,7 +156,7 @@ def parse_events(text: str, source: str, today: date, until: date, default_categ
         common = dict(
             source=source, title=title, venue_name=venue, address=address, city=city, lat=lat, lon=lon,
             price_min=price_min, is_free=is_free, price_text=price_text,
-            url=_unescape(e["URL"][0]) if "URL" in e else None,
+            url=url,
             category=classify(title, description, default=default_category) or "cultura",
             description=description or None,
         )
