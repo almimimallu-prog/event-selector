@@ -16,20 +16,49 @@ NOTE_CHARS = 300
 
 # @compte d'Instagram: no just després d'una lletra (correus com info@lloc.cat) i sense el punt final de la frase.
 MENTION = re.compile(r"(?<![\w.@])@([A-Za-z0-9_.]{2,30})")
+# L'API de Meta treu la «@» de les mencions i hi deixa un espai al darrere: «… de mesa. festivaldau \n». Es busquen
+# les paraules que tanquen una línia acabada en espai i tenen forma de compte (minúscules, 6+ caràcters).
+STRIPPED_HANDLE = re.compile(r"^(?=.{6,30}$)[a-z0-9._]*[a-z][a-z0-9._]*$")
+PLAIN_WORD = re.compile(r"^[a-zà-ÿ0-9.·_'-]+$")  # paraula escrita en minúscules (text normal)
 
 Profile = dict  # username, name, biography, website, followers_count
 Lookup = Callable[[str], Profile | None]  # None: no existeix o no és un compte professional
 
 
+def _split_caption(caption: str) -> tuple[set[str], set[str], list[str]]:
+    """(mencions amb @, possibles mencions sense @, paraules en minúscules de la resta del text)."""
+    explicit = {m.rstrip(".").lower() for m in MENTION.findall(caption or "") if m.rstrip(".")}
+    stripped: set[str] = set()
+    words: list[str] = []
+    for line in (caption or "").split("\n"):
+        tokens = line.split()
+        chain = []
+        if line.endswith(" "):
+            for token in reversed(tokens):
+                candidate = token.rstrip(",;")
+                if candidate.endswith(".") or not STRIPPED_HANDLE.match(candidate):
+                    break
+                chain.append(candidate)
+        stripped.update(chain)
+        rest = tokens[:len(tokens) - len(chain)]
+        words += [w.strip(".,;:!?()«»\"") for w in rest if not w.startswith("@") and PLAIN_WORD.match(w.strip(".,;:!?()«»\""))]
+    return explicit, stripped - explicit, words
+
+
 def mentions_in(caption: str) -> set[str]:
-    return {m.rstrip(".").lower() for m in MENTION.findall(caption or "") if m.rstrip(".")}
+    explicit, stripped, _ = _split_caption(caption)
+    return explicit | stripped
 
 
 def count_mentions(posts: list[tuple[str, str]]) -> dict[str, dict]:
-    """[(compte que publica, text)] → {compte mencionat: {"mentions": posts que el mencionen, "mentioned_by": [...]}}."""
+    """[(compte que publica, text)] → {compte mencionat: {"mentions": posts que el mencionen, "mentioned_by": [...]}}.
+
+    Les mencions sense «@» es descarten si la paraula també surt com a text normal en algun post («persones»)."""
+    parsed = [(author, *_split_caption(caption)) for author, caption in posts]
+    vocabulary = {w for *_, words in parsed for w in words}
     counts: dict[str, dict] = {}
-    for author, caption in posts:
-        for handle in mentions_in(caption) - {author}:
+    for author, explicit, stripped, _ in parsed:
+        for handle in (explicit | (stripped - vocabulary)) - {author}:
             entry = counts.setdefault(handle, {"mentions": 0, "mentioned_by": set()})
             entry["mentions"] += 1
             entry["mentioned_by"].add(author)

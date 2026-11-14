@@ -14,9 +14,37 @@ CAPTION = """✨ PLANES para hacer este fin de semana
 Escríbenos a info@planes.com · #Barcelona @planesenbarcelona"""
 
 
+# Així arriba el text per l'API de Meta: sense «@», i la menció deixa un espai al final de la línia.
+# (Els espais finals s'escriuen amb " \n" perquè els editors no els esborrin.)
+API_CAPTION = " \n".join([
+    "✨ PLANES para hacer este fin de semana 👇",
+    "🎲 Festival DAU: gran festival de juegos de mesa para todas las edades. festivaldau",
+    "📍 Fabra i Coats fabraicoatsbcn fabraicoats.fabricadecreacio",
+    "🍢 Tapantoni: ruta de tapas por los locales de Sant Antoni. tapantoni",
+    "🎟️ Entradas en el link de la bio",
+    "Aquest any les persones ho van gaudir molt.",
+    "Tornem el 2026. ",
+])
+
+
 def test_mentions_in_caption():
     assert discover.mentions_in(CAPTION) == {
         "festivaldau", "fabraicoatsbcn", "fabraicoats.fabricadecreacio", "tapantoni", "planesenbarcelona"}
+
+
+def test_mentions_without_at_sign_from_the_api():
+    found = discover.mentions_in(API_CAPTION)
+    assert {"festivaldau", "fabraicoatsbcn", "fabraicoats.fabricadecreacio", "tapantoni"} <= found
+    # Ni paraules curtes, ni majúscules, ni finals de frase, ni números.
+    assert not found & {"Coats", "bio", "molt.", "2026.", "2026"}
+
+
+def test_count_mentions_drops_words_used_as_normal_text():
+    other = "Les persones que vulguin venir poden apuntar-se. Hi haurà persones de tot arreu."
+    counts = discover.count_mentions([("planesenbarcelona", API_CAPTION), ("ajigualada", other)])
+    assert "persones" not in counts and "festivaldau" in counts
+    # «Tapantoni:» amb majúscula al títol no compta com a text normal.
+    assert "tapantoni" in counts
 
 
 def test_count_mentions_ignores_self_and_counts_posts_once():
@@ -77,6 +105,27 @@ def test_run_proposes_new_accounts_and_updates_known_ones():
     # La proposta que ja hi era s'actualitza amb el recompte nou.
     [(target, values)] = store.updated
     assert target == "eq.s2" and values["config"]["mentions"] == 2
+
+
+def _client(status, body):
+    import httpx
+    return httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(status, json=body)))
+
+
+def test_fetch_profile_unknown_account_in_any_language_is_none():
+    from event_pipeline.adapters import instagram
+    body = {"error": {"message": "No se encuentra al usuario con el nombre noexisteix.", "code": 110,
+                      "error_subcode": 2207013, "type": "OAuthException"}}
+    with _client(400, body) as client:
+        assert instagram.fetch_profile(client, "token", "123", "noexisteix") is None
+
+
+def test_fetch_profile_other_errors_are_raised():
+    import pytest
+    from event_pipeline.adapters import instagram
+    with _client(400, {"error": {"message": "Token caducat", "code": 190}}) as client, \
+            pytest.raises(instagram.InstagramError):
+        instagram.fetch_profile(client, "token", "123", "festivaldau")
 
 
 def test_run_respects_lookup_limit():

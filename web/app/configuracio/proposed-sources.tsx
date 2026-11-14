@@ -19,7 +19,8 @@ export interface Proposal {
 
 const VISIBLE = 5;
 // Pàgines d'enllaços (Linktree i similars): no són el web de l'organitzador; cal obrir-les per trobar-lo.
-const LINK_PAGE = /(^|\.)(linktr\.ee|linkin\.bio|beacons\.ai|lnk\.bio|bio\.link|taplink\.cc|campsite\.bio|linkr\.bio|solo\.to|allmylinks\.com|msha\.ke|later\.com|tap\.bio|snipfeed\.co)$/i;
+// També escurçadors (bit.ly) i àlbums de fotos: tampoc no porten al programa.
+const LINK_PAGE = /(^|\.)(linktr\.ee|linkin\.bio|beacons\.ai|lnk\.bio|bio\.link|taplink\.cc|campsite\.bio|linkr\.bio|solo\.to|allmylinks\.com|msha\.ke|later\.com|tap\.bio|snipfeed\.co|mtr\.bio|mtrbio\.com|bit\.ly|flic\.kr)$/i;
 
 const input = "h-9 min-w-0 flex-1 rounded-lg border border-line bg-bg px-3 text-sm outline-none focus:border-accent";
 

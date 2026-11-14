@@ -20,7 +20,13 @@ MEDIA_FIELDS = "id,caption,media_type,media_url,thumbnail_url,permalink,timestam
 
 
 class InstagramError(Exception):
-    pass
+    def __init__(self, message: str, code: int | None = None, subcode: int | None = None):
+        super().__init__(message)
+        self.code, self.subcode = code, subcode
+
+
+# Business Discovery: el compte no existeix o no és professional (el missatge ve en l'idioma del compte).
+USER_NOT_FOUND = {(110, 2207013)}
 
 
 @dataclass
@@ -55,7 +61,7 @@ def _get(client: httpx.Client, token: str, path: str, **params) -> dict:
         message = error.get("error_user_msg") or error.get("message") or response.text[:300]
         if error.get("code") == 190:
             raise InstagramError(f"El token d'Instagram ha caducat o no és vàlid: torna a fer instagram-setup ({message})")
-        raise InstagramError(f"Meta {response.status_code}: {message}")
+        raise InstagramError(f"Meta {response.status_code}: {message}", error.get("code"), error.get("error_subcode"))
     return response.json()
 
 
@@ -65,7 +71,7 @@ def fetch_posts(client: httpx.Client, token: str, ig_user_id: str, handle: str, 
     try:
         data = _get(client, token, ig_user_id, fields=fields)
     except InstagramError as exc:
-        if "business_discovery" in str(exc).lower() or "cannot be found" in str(exc).lower() or "(#110)" in str(exc):
+        if exc.code == 110 or "business_discovery" in str(exc).lower() or "cannot be found" in str(exc).lower():
             raise InstagramError(f"@{handle} no existeix o no és un compte professional ({exc})") from exc
         raise
     media = ((data.get("business_discovery") or {}).get("media") or {}).get("data") or []
@@ -81,7 +87,7 @@ def fetch_profile(client: httpx.Client, token: str, ig_user_id: str, handle: str
         data = _get(client, token, ig_user_id, fields=f"business_discovery.username({handle}){{{PROFILE_FIELDS}}}")
     except InstagramError as exc:
         text = str(exc).lower()
-        if "business_discovery" in text or "cannot be found" in text or "(#110)" in text or "invalid user id" in text:
+        if (exc.code, exc.subcode) in USER_NOT_FOUND or exc.code == 110 or "cannot be found" in text:
             return None
         raise
     return data.get("business_discovery") or None
