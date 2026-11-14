@@ -4,6 +4,7 @@ import { ExternalLink, Plus, Search, Trash2, X } from "lucide-react";
 import { useActionState, useMemo, useRef, useState, useTransition } from "react";
 import { CATEGORIES } from "@/lib/categories";
 import type { Category } from "@/lib/types";
+import { PipelineButton } from "./pipeline-button";
 import { addSource, deleteSource, setSourceActive } from "./sources-actions";
 import {
   addableFromQuery, filterSources, KIND_LABELS, type SourceKind, sourceKind, STATUS_LABELS, type StatusFilter,
@@ -118,6 +119,7 @@ export function SourcesEditor({ sources }: { sources: EditableSource[] }) {
 
   return (
     <div className="flex flex-col gap-3">
+      <PipelineButton />
       <div className="flex flex-col gap-2">
         <div className="relative">
           <Search size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-fg-3" />

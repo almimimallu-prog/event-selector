@@ -42,6 +42,10 @@ Després, a **Authentication → Sign In / Providers**, desactiva *Allow new use
 - **Pipeline**: GitHub Actions (`.github/workflows/pipeline.yml`) cada 6 hores, o a mà des de la pestanya
   Actions → Pipeline → Run workflow. Secrets: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`,
   `EVENTBRITE_TOKEN`.
+- **Botó «Actualitzar ara»** (Configuració → Fonts): engega el mateix workflow amb totes les fonts i en mostra l'estat.
+  Cal la variable `GITHUB_DISPATCH_TOKEN` a Vercel (i a `web/.env.local` per provar-ho en local): un token
+  *fine-grained* de GitHub (Settings → Developer settings → Fine-grained tokens) només del repositori
+  `event-selector`, amb el permís *Actions: Read and write*. Sense el token, en lloc del botó surt aquest avís.
 - **Zones i fonts**: s'editen a l'app (Configuració). Una font nova es comprova contra el `robots.txt` i se'n tria
   l'adaptador (WordPress/The Events Calendar, schema.org/Event o Gemini); les d'Eventbrite les completa el pipeline
   amb l'API. També des de la terminal: `python -m event_pipeline.manage eventbrite-add <enllaç>` (des de `pipeline/`).
