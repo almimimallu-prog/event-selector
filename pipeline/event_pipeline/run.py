@@ -249,6 +249,14 @@ def discover_sources(client, store: Store, now: datetime) -> None:
         print(f"· Descobriment de fonts: {type(exc).__name__}: {exc}")
 
 
+def runnable_here(sources: list[dict]) -> list[dict]:
+    """A GitHub Actions es salten les fonts que només es poden llegir des del PC de casa (config.runner = "local",
+    p. ex. l'Agenda de Barcelona, que bloqueja els servidors de GitHub). Les llegeix pipeline/run-local.ps1."""
+    if os.getenv("GITHUB_ACTIONS") != "true":
+        return sources
+    return [s for s in sources if (s.get("config") or {}).get("runner") != "local"]
+
+
 def pause_idle_sources(store: Store, now: datetime) -> None:
     """Fonts que funcionen però fa setmanes que no donen res: es pausen (es reactiven a l'app)."""
     try:
@@ -280,6 +288,7 @@ def main() -> None:
         sources = store.select("sources", **filters)
         if args.source:
             sources = [s for s in sources if (s.get("config") or {}).get("adapter") == args.source]
+        sources = runnable_here(sources)
         # Sense accés a Instagram configurat, aquestes fonts s'esperen (no compten com a errors).
         if not (os.getenv("INSTAGRAM_TOKEN") and os.getenv("INSTAGRAM_USER_ID")):
             waiting = [s for s in sources if (s.get("config") or {}).get("adapter") == "instagram"]

@@ -8,7 +8,7 @@ El disseny complet i les decisions són a [PROPOSTA.md](PROPOSTA.md).
 | Carpeta | Què és |
 |---|---|
 | `web/` | App Next.js 16 (PWA) — es desplega a Vercel amb *Root Directory* = `web` |
-| `pipeline/` | Pipeline Python d'extracció (GitHub Actions + PC de casa per a Instagram) |
+| `pipeline/` | Pipeline Python d'extracció (GitHub Actions + PC de casa per a l'Agenda de Barcelona) |
 | `supabase/migrations/` | Esquema de la base de dades |
 
 ## Posada en marxa
@@ -48,6 +48,10 @@ Després, a **Authentication → Sign In / Providers**, desactiva *Allow new use
   `event-selector`, amb el permís *Actions: Read and write*. Sense el token, en lloc del botó surt aquest avís.
 - **Fonts proposades**: el pipeline proposa els @comptes que mencionen els comptes d'Instagram seguits (perfil via
   l'API de Meta) i, amb `GROQ_API_KEY`, gpt-oss (Groq, gratuït) marca quins semblen organitzar esdeveniments.
+- **PC de casa**: l'Agenda de Barcelona (Open Data BCN) respon 403 als servidors de GitHub, així que GitHub Actions
+  salta les fonts amb `config.runner = "local"` i les llegeix `pipeline/run-local.cmd` des del PC, amb la tasca
+  programada de Windows «Event Selector - Agenda BCN» (cada dia a les 9:00; si el PC estava apagat, en engegar-lo).
+  Registre a `pipeline/logs/local-run.log`.
 - **Pausa automàtica**: les fonts que funcionen però fa 60 dies que no donen cap pla nou es pausen soles
   (`pipeline/event_pipeline/idle.py`); mai les de sèrie. En reactivar-les a l'app, el comptador torna a començar.
 - **Zones i fonts**: s'editen a l'app (Configuració). Una font nova es comprova contra el `robots.txt` i se'n tria

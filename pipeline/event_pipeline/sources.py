@@ -29,7 +29,9 @@ SEED_SOURCES = [
         "name": "Agenda de Barcelona (Open Data BCN)",
         "type": "api",
         "url": bcn.CSV_URL,
-        "config": {"adapter": "bcn"},
+        # El portal respon 403 als servidors de GitHub (des del 23/10/2026): la llegeix el PC de casa
+        # (pipeline/run-local.ps1, tasca programada de Windows).
+        "config": {"adapter": "bcn", "runner": "local"},
         "schedule_hours": 24,
         "default_city": "Barcelona",
         "is_complete_listing": True,
