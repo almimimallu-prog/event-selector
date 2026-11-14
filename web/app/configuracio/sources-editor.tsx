@@ -1,10 +1,13 @@
 "use client";
 
-import { ExternalLink, Trash2 } from "lucide-react";
-import { useActionState, useState, useTransition } from "react";
+import { ExternalLink, Plus, Search, Trash2, X } from "lucide-react";
+import { useActionState, useMemo, useRef, useState, useTransition } from "react";
 import { CATEGORIES } from "@/lib/categories";
 import type { Category } from "@/lib/types";
 import { addSource, deleteSource, setSourceActive } from "./sources-actions";
+import {
+  addableFromQuery, filterSources, KIND_LABELS, type SourceKind, sourceKind, STATUS_LABELS, type StatusFilter,
+} from "./sources-filter";
 import type { FormState } from "@/lib/geo-actions";
 
 export type EditableSource = {
@@ -69,20 +72,109 @@ function SourceRow({ source, onError }: { source: EditableSource; onError: (m: s
   );
 }
 
+interface ChipProps {
+  label: string;
+  count: number;
+  selected: boolean;
+  onClick: () => void;
+}
+
+function Chip({ label, count, selected, onClick }: ChipProps) {
+  return (
+    <button type="button" aria-pressed={selected} onClick={onClick}
+            className={`h-8 rounded-full border px-3 text-sm ${selected
+              ? "border-accent bg-accent text-surface"
+              : "border-line bg-surface text-fg-2 hover:bg-surface-2"}`}>
+      {label} <span className={selected ? "opacity-80" : "text-fg-3"}>{count}</span>
+    </button>
+  );
+}
+
+const KINDS = Object.keys(KIND_LABELS) as SourceKind[];
+const STATUSES = Object.keys(STATUS_LABELS) as StatusFilter[];
+
 export function SourcesEditor({ sources }: { sources: EditableSource[] }) {
   const [state, action, pending] = useActionState<FormState, FormData>(addSource, { status: "idle" });
   const [rowError, setRowError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [kind, setKind] = useState<SourceKind | "all">("all");
+  const [status, setStatus] = useState<StatusFilter>("all");
+  const urlInput = useRef<HTMLInputElement>(null);
+
+  const visible = useMemo(() => filterSources(sources, { query, kind, status }), [sources, query, kind, status]);
+  // Els recomptes de cada xip tenen en compte la cerca i l'altre filtre, no el seu propi.
+  const kindCount = (k: SourceKind | "all") => filterSources(sources, { query, kind: k, status }).length;
+  const statusCount = (s: StatusFilter) => filterSources(sources, { query, kind, status: s }).length;
+  const kindsPresent = KINDS.filter((k) => sources.some((s) => sourceKind(s) === k));
+  const filtering = query.trim() !== "" || kind !== "all" || status !== "all";
+  const addable = visible.length === 0 ? addableFromQuery(query) : null;
+
+  const prefillAdd = (text: string) => {
+    if (!urlInput.current) return;
+    urlInput.current.value = text;
+    urlInput.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    urlInput.current.focus();
+  };
 
   return (
     <div className="flex flex-col gap-3">
-      <ul className="divide-y divide-line">
-        {sources.map((s) => <SourceRow key={s.id} source={s} onError={setRowError} />)}
-      </ul>
+      <div className="flex flex-col gap-2">
+        <div className="relative">
+          <Search size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-fg-3" />
+          <input type="search" value={query} onChange={(e) => setQuery(e.target.value)}
+                 autoCapitalize="none" autoComplete="off" placeholder="Cerca per nom, web o @compte"
+                 aria-label="Cercar fonts" className={`${input} w-full pr-9 pl-9`} />
+          {query && (
+            <button type="button" onClick={() => setQuery("")} aria-label="Esborrar la cerca"
+                    className="absolute top-1/2 right-2 grid size-7 -translate-y-1/2 place-items-center rounded-md text-fg-3 hover:text-fg">
+              <X size={16} />
+            </button>
+          )}
+        </div>
+        {kindsPresent.length > 1 && (
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Tipus de font">
+            <Chip label="Totes" count={kindCount("all")} selected={kind === "all"} onClick={() => setKind("all")} />
+            {kindsPresent.map((k) => (
+              <Chip key={k} label={KIND_LABELS[k]} count={kindCount(k)} selected={kind === k} onClick={() => setKind(k)} />
+            ))}
+          </div>
+        )}
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Estat de la font">
+          {STATUSES.filter((s) => s !== "errors" || statusCount("errors") > 0 || status === "errors").map((s) => (
+            <Chip key={s} label={STATUS_LABELS[s]} count={statusCount(s)} selected={status === s} onClick={() => setStatus(s)} />
+          ))}
+        </div>
+        {filtering && (
+          <p className="text-xs text-fg-3">
+            {visible.length} de {sources.length} fonts ·{" "}
+            <button type="button" className="underline hover:text-accent"
+                    onClick={() => { setQuery(""); setKind("all"); setStatus("all"); }}>
+              treure els filtres
+            </button>
+          </p>
+        )}
+      </div>
+
+      {visible.length > 0 ? (
+        <ul className="divide-y divide-line">
+          {visible.map((s) => <SourceRow key={s.id} source={s} onError={setRowError} />)}
+        </ul>
+      ) : (
+        <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed border-line p-3 text-sm text-fg-2">
+          <p>{query.trim() ? <>No tens cap font que coincideixi amb «{query.trim()}».</> : "Cap font amb aquests filtres."}</p>
+          {addable && (
+            <button type="button" onClick={() => prefillAdd(addable)}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-accent px-3 font-semibold text-surface">
+              <Plus size={16} /> Afegir {addable}
+            </button>
+          )}
+        </div>
+      )}
       {rowError && <p className="text-sm text-gastro">{rowError}</p>}
 
       <form action={action} className="flex flex-col gap-2 border-t border-line pt-3">
         <p className="text-sm font-medium">Afegir una font</p>
-        <input name="url" type="text" inputMode="url" autoCapitalize="none" required placeholder="https://… (web, Eventbrite, grup de Meetup, calendari .ics) o @compte d'Instagram"
+        <input ref={urlInput} name="url" type="text" inputMode="url" autoCapitalize="none" required placeholder="https://… (web, Eventbrite, grup de Meetup, calendari .ics) o @compte d'Instagram"
                aria-label="Enllaç de la font" className={input} />
         <div className="flex flex-wrap gap-2">
           <input name="name" placeholder="Nom (opcional)" aria-label="Nom de la font" className={`${input} min-w-40 flex-1`} />
