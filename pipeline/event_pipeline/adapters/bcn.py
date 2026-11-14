@@ -23,24 +23,52 @@ from ..geo import DEFAULT_ZONES, in_zones
 from ..models import SourceEvent
 from ..text import is_excluded, parse_price, parse_times, parse_weekdays, strip_html
 
+RESOURCE_ID = "3abb2414-1ee0-446e-9c25-380e938adb73"
 CSV_URL = (
     "https://opendata-ajuntament.barcelona.cat/data/dataset/2767159c-1c98-46b8-a686-2b25b40cb053"
-    "/resource/3abb2414-1ee0-446e-9c25-380e938adb73/download"
+    f"/resource/{RESOURCE_ID}/download"
 )
+# API del portal (CKAN datastore): les mateixes files i columnes que el CSV, per pàgines. Des de GitHub Actions la
+# descàrrega del CSV respon 403 (des del 23/10/2026); l'API va per un altre camí. El CSV queda de reserva.
+DATASTORE_URL = "https://opendata-ajuntament.barcelona.cat/data/api/action/datastore_search"
+PAGE_SIZE = 1000
 MAX_DAILY_EXPANSION_DAYS = 6
 REGISTRATION_ATTRS = {"Inscripcions", "Reserves", "Informació i reserves", "Venda d'entrades"}
 
 
 def fetch(client: httpx.Client) -> list[dict]:
+    try:
+        return fetch_datastore(client)
+    except Exception as exc:  # p. ex. l'API canvia o no respon: el CSV de sempre
+        print(f"  · Agenda BCN: l'API ha fallat ({type(exc).__name__}: {exc}); es llegeix el CSV")
     response = http.get(client, CSV_URL, timeout=120)
     return parse_csv(response.content)
 
 
+def fetch_datastore(client: httpx.Client) -> list[dict]:
+    """Totes les files per l'API, amb el mateix format que el CSV (text, buits com a cadena buida, sense _id)."""
+    rows: list[dict] = []
+    while True:
+        response = http.get(client, DATASTORE_URL, timeout=120,
+                            params={"resource_id": RESOURCE_ID, "limit": PAGE_SIZE, "offset": len(rows)})
+        response.raise_for_status()
+        body = response.json()
+        if not body.get("success"):
+            raise ValueError(f"resposta sense èxit: {str(body.get('error'))[:200]}")
+        records = body["result"]["records"]
+        rows += [_clean({k: "" if v is None else str(v) for k, v in r.items() if k != "_id"}) for r in records]
+        if not records or len(rows) >= body["result"].get("total", 0):
+            return rows
+
+
 def parse_csv(content: bytes) -> list[dict]:
     text = content.decode("utf-16") if content[:2] in (b"\xff\xfe", b"\xfe\xff") else content.decode("utf-8-sig")
-    # Alguns valors (register_id) porten un BOM enganxat: fora.
-    return [{k.lstrip("﻿"): (v or "").lstrip("﻿") for k, v in row.items()}
-            for row in csv.DictReader(io.StringIO(text))]
+    return [_clean(row) for row in csv.DictReader(io.StringIO(text))]
+
+
+def _clean(row: dict) -> dict:
+    """Alguns valors (register_id) porten un BOM enganxat, tant al CSV com a l'API: fora."""
+    return {k.lstrip("﻿"): (v or "").lstrip("﻿") for k, v in row.items()}
 
 
 # Classe CSS de cada cel·la → camp. Les cel·les amb rowspan s'arrosseguen a les files següents.
