@@ -13,10 +13,10 @@ def _event():
 
 
 def test_source_city_avoids_review():
-    item = item_from_extracted(_event(), {"default_city": "Igualada", "url": "https://x"}, NOW)
+    [item] = item_from_extracted(_event(), {"default_city": "Igualada", "url": "https://x"}, NOW)
     assert item["status"] == "published" and item["city"] == "Igualada"
 
 
 def test_without_any_place_goes_to_review():
-    item = item_from_extracted(_event(), {"url": "https://x"}, NOW)
+    [item] = item_from_extracted(_event(), {"url": "https://x"}, NOW)
     assert item["status"] == "review" and "sense lloc" in item["review_reasons"]

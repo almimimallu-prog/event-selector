@@ -7,10 +7,11 @@ des de l'app i viuen a Supabase, mai al repositori.
 import hashlib
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from . import EXTRACTOR_VERSION
 from .adapters import bcn, diba, gencat
+from .adapters.common import at, end_of, occurrence_days
 from .geo import locate_municipality
 from .models import ExtractedEvent, SourceEvent
 
@@ -172,26 +173,59 @@ def _slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:60]
 
 
-def item_from_extracted(event: ExtractedEvent, source: dict, now: datetime) -> dict | None:
-    """None si no s'ha de guardar (no és un esdeveniment o ja ha passat)."""
+# Una sessió que acaba un altre dia però dura menys d'això és un sol acte que passa de mitjanit (concert 22–02 h).
+MIN_MULTIDAY_SPAN = timedelta(hours=24)
+
+
+def _occurrences(event: ExtractedEvent, now: datetime) -> list[dict]:
+    """Com els altres adaptadors: una fira de fins a 7 dies → una sessió per dia (el calendari col·loca cada sessió
+    al dia que comença); si dura més, llarga durada. Retorna els camps que canvien per a cada sessió."""
+    start, end = event.start, event.end
+    single = {"start": start, "end": end, "all_day": event.all_day, "kind": event.kind, "series_key": None}
+    if event.kind != "session" or end is None or end.date() <= start.date() or end - start < MIN_MULTIDAY_SPAN:
+        return [single]
+    days = occurrence_days(start.date(), end.date(), now.date(), end.date())
+    if days and days[0][1]:
+        return [{**single, "start": at(start.date(), None), "end": end_of(end.date()), "all_day": True,
+                 "kind": "long_running"}]
+    same_hours_daily = not event.all_day and end.time() > start.time()
+    series = f"{_slug(event.title)}:{start.date().isoformat()}"
+    return [{"start": at(day, None if event.all_day else start.time()),
+             "end": at(day, end.time()) if same_hours_daily else None,
+             "all_day": event.all_day, "kind": "session", "series_key": series} for day, _ in days]
+
+
+def item_from_extracted(event: ExtractedEvent, source: dict, now: datetime) -> list[dict]:
+    """Llista buida si no s'ha de guardar (no és un esdeveniment o ja ha passat); si dura uns quants dies, una
+    sessió per dia."""
     problems = event.problems(now)
     if "no és un esdeveniment" in problems or "ja ha passat" in problems:
-        return None
+        return []
     payload = event.model_dump(mode="json")
     # Ubicació aproximada pel municipi (fins que hi hagi geocodificació de locals).
     place = locate_municipality(event.city or source.get("default_city"))
     city = place[0] if place else (event.city or source.get("default_city"))
     if city and "sense lloc" in problems:  # el municipi de la font ja situa l'esdeveniment
         problems = [p for p in problems if p != "sense lloc"]
-    return {
+    common = _item_fields(event, source, payload, city, place, problems)
+    return [{
+        **common,
         # Amb l'hora: el mateix espectacle pot fer dues sessions el mateix dia (18:00 i 20:00).
-        "external_id": f"{_slug(event.title)}:{event.start.date().isoformat()}"
-                       + ("" if event.all_day else f"T{event.start:%H%M}"),
+        "external_id": f"{_slug(event.title)}:{o['start'].date().isoformat()}"
+                       + ("" if o["all_day"] else f"T{o['start']:%H%M}"),
+        "start": _iso(o["start"]),
+        "end": _iso(o["end"]),
+        "all_day": o["all_day"],
+        "kind": o["kind"],
+        "series_key": o["series_key"],
+        "content_hash": content_hash({**payload, "occurrence": _iso(o["start"])}),
+    } for o in _occurrences(event, now)]
+
+
+def _item_fields(event: ExtractedEvent, source: dict, payload: dict, city: str | None, place, problems: list[str]) -> dict:
+    """Camps comuns a totes les sessions d'un esdeveniment extret."""
+    return {
         "title": event.title,
-        "start": _iso(event.start),
-        "end": _iso(event.end),
-        "all_day": event.all_day,
-        "kind": event.kind,
         "venue_name": event.venue_name,
         "address": event.address,
         "city": city,
@@ -206,7 +240,6 @@ def item_from_extracted(event: ExtractedEvent, source: dict, now: datetime) -> d
         "category": event.category,
         "tags": event.tags,
         "summary_ca": event.summary_ca,
-        "content_hash": content_hash(payload),
         "payload": payload,
         "status": "review" if problems else "published",
         "review_reasons": problems,

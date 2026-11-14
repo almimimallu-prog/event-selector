@@ -137,7 +137,7 @@ def collect(source: dict, client, store: Store, settings, now: datetime, zones=D
         context = SourceContext(source["name"], source["url"], source.get("default_city"))
         result, usage = extract(client, settings.gemini_api_key, text, context, now)
         record_llm_usage(store, usage)
-        items = [i for i in (item_from_extracted(e, source, now) for e in result.events) if i]
+        items = [i for e in result.events for i in item_from_extracted(e, source, now)]
         # La pàgina es desa al final, perquè si l'extracció falla es torni a provar la propera vegada.
         store.insert("raw_items", {"source_id": source["id"], "external_id": page_id, "url": source["url"],
                                    "content_hash": page_hash, "payload": {"chars": len(text)}, "status": "done",
@@ -177,7 +177,7 @@ def collect_instagram(source: dict, client, store: Store, settings, now: datetim
     result, usage = extract(client, settings.gemini_api_key, instagram.posts_prompt(new), context, now,
                             attachments=tuple(attachments))
     record_llm_usage(store, usage)
-    items = [i for i in (item_from_extracted(e, source, now) for e in result.events) if i]
+    items = [i for e in result.events for i in item_from_extracted(e, source, now)]
     # Les publicacions es marquen com a llegides al final: si l'extracció falla, es tornen a provar.
     store.insert("raw_items", [{"source_id": source["id"], "external_id": f"post:{p.id}", "url": p.permalink,
                                 "content_hash": content_hash({"caption": p.caption, "extractor": EXTRACTOR_VERSION}),
