@@ -49,10 +49,10 @@ export default async function SettingsPage() {
       relevant: typeof config.relevant === "boolean" ? config.relevant : null, reason: config.relevance_reason ?? null,
     };
   });
-  const sourceRows: EditableSource[] = (sources.data ?? []).map(({ config, ...s }) => ({
-    ...s,
-    adapter: (config as { adapter?: string } | null)?.adapter ?? null,
-  }));
+  const sourceRows: EditableSource[] = (sources.data ?? []).map(({ config, ...s }) => {
+    const c = (config ?? {}) as { adapter?: string; auto_paused_at?: string; auto_paused_reason?: string };
+    return { ...s, adapter: c.adapter ?? null, auto_paused_at: c.auto_paused_at ?? null, auto_paused_reason: c.auto_paused_reason ?? null };
+  });
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 pt-3 pb-24">

@@ -21,6 +21,9 @@ export type EditableSource = {
   last_error: string | null;
   consecutive_failures: number;
   adapter: string | null;
+  /** El pipeline l'ha pausada perquè no donava plans nous (data ISO); null si no. */
+  auto_paused_at?: string | null;
+  auto_paused_reason?: string | null;
 };
 
 const input = "h-10 rounded-lg border border-line bg-bg px-3 outline-none focus:border-accent";
@@ -49,7 +52,9 @@ function SourceRow({ source, onError }: { source: EditableSource; onError: (m: s
           )}
         </p>
         <p className="text-xs text-fg-3">
-          {!active ? "Pausada" : source.last_success_at ? `Actualitzada ${when(source.last_success_at)}` : "Pendent de la primera lectura"}
+          {!active ? (source.auto_paused_at
+            ? `Pausada automàticament el ${when(source.auto_paused_at)}: ${(source.auto_paused_reason ?? "sense plans nous").toLowerCase()}. Activa-la si la vols tornar a llegir.`
+            : "Pausada") : source.last_success_at ? `Actualitzada ${when(source.last_success_at)}` : "Pendent de la primera lectura"}
           {(source.adapter === "llm" || source.adapter === "instagram") && " · llegida amb Gemini"}
         </p>
         {active && source.consecutive_failures > 0 && source.last_error && (

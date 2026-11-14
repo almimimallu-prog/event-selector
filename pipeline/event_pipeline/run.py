@@ -22,7 +22,7 @@ from .gemini import QuotaExceeded
 from .http import get, make_client
 from .sources import SEED_SOURCES, content_hash, item_from_extracted, item_from_source_event
 from .store import Store
-from . import discover, relevance, summarize
+from . import discover, idle, relevance, summarize
 
 HORIZON_DAYS = 60
 BATCH = 200
@@ -249,6 +249,16 @@ def discover_sources(client, store: Store, now: datetime) -> None:
         print(f"· Descobriment de fonts: {type(exc).__name__}: {exc}")
 
 
+def pause_idle_sources(store: Store, now: datetime) -> None:
+    """Fonts que funcionen però fa setmanes que no donen res: es pausen (es reactiven a l'app)."""
+    try:
+        paused = idle.pause_idle(store, now)
+        if paused:
+            print(f"· Pausades per no donar plans nous en {idle.IDLE_DAYS} dies: {', '.join(paused)}")
+    except Exception as exc:
+        print(f"· Pausa automàtica: {type(exc).__name__}: {exc}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--all", action="store_true", help="executa totes les fonts actives, toquin o no")
@@ -281,6 +291,8 @@ def main() -> None:
         results = [run_source(source, client, store, settings, now, zones) for source in sources]
         if args.source in (None, "instagram"):
             discover_sources(client, store, now)
+        if not args.source:
+            pause_idle_sources(store, now)
         if not args.no_summaries:
             try:
                 done = summarize.run(client, store, settings.gemini_api_key, now, record_llm_usage)

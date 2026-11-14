@@ -46,6 +46,10 @@ Després, a **Authentication → Sign In / Providers**, desactiva *Allow new use
   Cal la variable `GITHUB_DISPATCH_TOKEN` a Vercel (i a `web/.env.local` per provar-ho en local): un token
   *fine-grained* de GitHub (Settings → Developer settings → Fine-grained tokens) només del repositori
   `event-selector`, amb el permís *Actions: Read and write*. Sense el token, en lloc del botó surt aquest avís.
+- **Fonts proposades**: el pipeline proposa els @comptes que mencionen els comptes d'Instagram seguits (perfil via
+  l'API de Meta) i, amb `GROQ_API_KEY`, gpt-oss (Groq, gratuït) marca quins semblen organitzar esdeveniments.
+- **Pausa automàtica**: les fonts que funcionen però fa 60 dies que no donen cap pla nou es pausen soles
+  (`pipeline/event_pipeline/idle.py`); mai les de sèrie. En reactivar-les a l'app, el comptador torna a començar.
 - **Zones i fonts**: s'editen a l'app (Configuració). Una font nova es comprova contra el `robots.txt` i se'n tria
   l'adaptador (WordPress/The Events Calendar, schema.org/Event o Gemini); les d'Eventbrite les completa el pipeline
   amb l'API. També des de la terminal: `python -m event_pipeline.manage eventbrite-add <enllaç>` (des de `pipeline/`).

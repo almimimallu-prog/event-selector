@@ -19,6 +19,8 @@ const SOURCES: EditableSource[] = [
   { ...base, id: "b", name: "Teatre de l'Aurora", status: "active", discovered_via: "seed", last_success_at: new Date().toISOString() },
   { ...base, id: "c", name: "Eventbrite: The Wedding Market", status: "active", discovered_via: "manual", last_success_at: null, consecutive_failures: 2, last_error: "EventbriteError: Eventbrite 404: no existeix o no és públic", adapter: "eventbrite" },
   { ...base, id: "d", name: "Ateneu de Capellades", status: "paused", discovered_via: "manual", last_success_at: null },
+  { ...base, id: "h", name: "Meetup: Igualada WordPress Meetup", status: "paused", discovered_via: "manual", last_success_at: new Date().toISOString(), adapter: "ics",
+    auto_paused_at: new Date().toISOString(), auto_paused_reason: "Cap pla nou en 60 dies" },
   { ...base, id: "e", name: "Instagram: @teatreaurora", url: "https://www.instagram.com/teatreaurora/", status: "active", discovered_via: "manual", last_success_at: new Date().toISOString(), adapter: "instagram" },
   { ...base, id: "f", name: "Instagram: @cafeigualada (Cafè)", url: "https://www.instagram.com/cafeigualada/", status: "active", discovered_via: "manual", last_success_at: null, consecutive_failures: 1, last_error: "@cafeigualada no existeix o no és un compte professional", adapter: "instagram" },
   { ...base, id: "g", name: "Meetup: Barcelona Board Games", url: "https://www.meetup.com/bcn-board-games/events/ical/", status: "active", discovered_via: "manual", last_success_at: new Date().toISOString(), adapter: "ics" },

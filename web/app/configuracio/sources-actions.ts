@@ -159,10 +159,16 @@ export async function addSource(_prev: FormState, form: FormData): Promise<FormS
 
 export async function setSourceActive(id: string, active: boolean): Promise<string | null> {
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("sources")
-    .update(active ? { status: "active", next_run_at: new Date().toISOString() } : { status: "paused" })
-    .eq("id", id);
+  let values: Record<string, unknown> = { status: "paused" };
+  if (active) {
+    // En reactivar-la, la pausa automàtica (pipeline/event_pipeline/idle.py) torna a comptar des d'ara.
+    const { data } = await supabase.from("sources").select("config").eq("id", id).maybeSingle();
+    const config = Object.fromEntries(Object.entries((data?.config ?? {}) as Record<string, unknown>)
+      .filter(([key]) => key !== "auto_paused_at" && key !== "auto_paused_reason"));
+    const now = new Date().toISOString();
+    values = { status: "active", next_run_at: now, config: { ...config, active_since: now } };
+  }
+  const { error } = await supabase.from("sources").update(values).eq("id", id);
   if (error) return error.message;
   revalidatePath("/configuracio");
   return null;
