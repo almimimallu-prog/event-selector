@@ -27,10 +27,13 @@ const SOURCES: EditableSource[] = [
 const PROPOSALS: Proposal[] = [
   { id: "p1", name: "Instagram: @festivaldau (Festival DAU Barcelona)", handle: "festivaldau", url: "https://www.instagram.com/festivaldau/",
     note: "🎲 15è festival del joc DAU Barcelona\n🎟️ Entrada gratuïta!", mentions: 3, mentionedBy: ["planesenbarcelona", "timeoutbcn"],
-    website: "https://linktr.ee/festivaldaubarcelona", followers: 5725 },
+    website: "https://linktr.ee/festivaldaubarcelona", followers: 5725, relevant: true, reason: "Festival de jocs de taula a Barcelona" },
   { id: "p2", name: "Instagram: @tapantoni (Tapantoni)", handle: "tapantoni", url: "https://www.instagram.com/tapantoni/",
     note: "Ruta de tapes pel barri de Sant Antoni", mentions: 1, mentionedBy: ["planesenbarcelona"],
-    website: "https://tapantoni.com/", followers: 2100 },
+    website: "https://tapantoni.com/", followers: 2100, relevant: null, reason: null },
+  { id: "p3", name: "Instagram: @revlon_es (Revlon España)", handle: "revlon_es", url: "https://www.instagram.com/revlon_es/",
+    note: "Maquillatge i cosmètica", mentions: 1, mentionedBy: ["planesenbarcelona"],
+    website: "https://www.revlon.es", followers: 98000, relevant: false, reason: "Marca de cosmètica sense esdeveniments" },
 ];
 
 const LEARNING = {

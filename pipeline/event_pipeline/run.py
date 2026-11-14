@@ -22,7 +22,7 @@ from .gemini import QuotaExceeded
 from .http import get, make_client
 from .sources import SEED_SOURCES, content_hash, item_from_extracted, item_from_source_event
 from .store import Store
-from . import discover, summarize
+from . import discover, relevance, summarize
 
 HORIZON_DAYS = 60
 BATCH = 200
@@ -238,8 +238,11 @@ def discover_sources(client, store: Store, now: datetime) -> None:
     token, ig_user_id = os.getenv("INSTAGRAM_TOKEN"), os.getenv("INSTAGRAM_USER_ID")
     if not token or not ig_user_id:
         return
+    groq_key = os.getenv("GROQ_API_KEY")
+    # Amb clau de Groq, gpt-oss marca quines propostes semblen organitzar esdeveniments (no gasta quota de Gemini).
+    classify = (lambda profiles: relevance.classify(client, groq_key, profiles)) if groq_key else None
     try:
-        proposed = discover.run(store, now, lambda h: instagram.fetch_profile(client, token, ig_user_id, h))
+        proposed = discover.run(store, now, lambda h: instagram.fetch_profile(client, token, ig_user_id, h), classify)
         if proposed:
             print(f"✓ Fonts proposades noves: {proposed}")
     except Exception as exc:

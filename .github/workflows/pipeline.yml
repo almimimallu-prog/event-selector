@@ -50,5 +50,7 @@ jobs:
           EVENTBRITE_TOKEN: ${{ secrets.EVENTBRITE_TOKEN }}
           INSTAGRAM_TOKEN: ${{ secrets.INSTAGRAM_TOKEN }}
           INSTAGRAM_USER_ID: ${{ secrets.INSTAGRAM_USER_ID }}
+          # Opcional: filtre de les «Fonts proposades» amb gpt-oss (Groq). Sense, les propostes surten sense filtrar.
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           PYTHONIOENCODING: utf-8
         run: python -m event_pipeline.run ${{ inputs.all && '--all' || '' }}

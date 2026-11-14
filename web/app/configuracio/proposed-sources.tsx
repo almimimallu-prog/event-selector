@@ -15,6 +15,9 @@ export interface Proposal {
   mentionedBy: string[];
   website: string | null;
   followers: number | null;
+  /** Classificació de gpt-oss: ¿organitza esdeveniments? null = encara sense classificar. */
+  relevant: boolean | null;
+  reason: string | null;
 }
 
 const VISIBLE = 5;
@@ -63,6 +66,11 @@ function ProposalRow({ proposal, onMessage }: { proposal: Proposal; onMessage: (
           {proposal.mentions === 1 ? "1 menció" : `${proposal.mentions} mencions`} de {by}
           {proposal.followers ? ` · ${proposal.followers.toLocaleString("ca")} seguidors` : ""}
         </p>
+        {proposal.reason && (
+          <p className={`text-xs ${proposal.relevant ? "text-going" : "text-fg-3"}`}>
+            {proposal.relevant ? "✓ " : ""}{proposal.reason}
+          </p>
+        )}
         {proposal.note && <p className="mt-0.5 line-clamp-2 whitespace-pre-line text-xs text-fg-2">{proposal.note}</p>}
       </div>
       <div className="flex flex-wrap gap-2">
@@ -94,27 +102,44 @@ function ProposalRow({ proposal, onMessage }: { proposal: Proposal; onMessage: (
   );
 }
 
+const byMentions = (a: Proposal, b: Proposal) => b.mentions - a.mentions || a.handle.localeCompare(b.handle);
+
 export function ProposedSources({ proposals }: { proposals: Proposal[] }) {
   const [showAll, setShowAll] = useState(false);
+  const [showOthers, setShowOthers] = useState(false);
   const [message, setMessage] = useState<{ error: boolean; text: string } | null>(null);
   if (proposals.length === 0) return null;
-  const sorted = [...proposals].sort((a, b) => b.mentions - a.mentions || a.handle.localeCompare(b.handle));
-  const shown = showAll ? sorted : sorted.slice(0, VISIBLE);
+  // Primer les que organitzen esdeveniments, després les no classificades; les que no, plegades a sota.
+  const main = proposals.filter((p) => p.relevant !== false)
+    .sort((a, b) => Number(b.relevant === true) - Number(a.relevant === true) || byMentions(a, b));
+  const others = proposals.filter((p) => p.relevant === false).sort(byMentions);
+  const shown = showAll ? main : main.slice(0, VISIBLE);
+  const row = (p: Proposal) => <ProposalRow key={p.id} proposal={p} onMessage={setMessage} />;
 
   return (
     <div className="flex flex-col gap-1 rounded-lg border border-line bg-bg p-3">
-      <p className="text-sm font-semibold">Fonts proposades ({proposals.length})</p>
+      <p className="text-sm font-semibold">Fonts proposades ({main.length})</p>
       <p className="text-xs text-fg-3">
         Comptes que mencionen els comptes d&apos;Instagram que segueixes. Pots seguir el compte, afegir-ne el web
         (sovint hi ha el programa complet) o descartar-lo; els descartats no tornen a sortir.
       </p>
-      <ul className="divide-y divide-line">
-        {shown.map((p) => <ProposalRow key={p.id} proposal={p} onMessage={setMessage} />)}
-      </ul>
-      {sorted.length > VISIBLE && (
+      {main.length > 0 ? <ul className="divide-y divide-line">{shown.map(row)}</ul>
+        : <p className="py-2 text-sm text-fg-2">Cap compte nou que sembli organitzar esdeveniments.</p>}
+      {main.length > VISIBLE && (
         <button type="button" onClick={() => setShowAll(!showAll)} className="self-start text-sm text-accent underline">
-          {showAll ? "Mostrar-ne menys" : `Veure-les totes (${sorted.length})`}
+          {showAll ? "Mostrar-ne menys" : `Veure-les totes (${main.length})`}
         </button>
+      )}
+      {others.length > 0 && (
+        <div className="mt-1 border-t border-line pt-2">
+          <button type="button" onClick={() => setShowOthers(!showOthers)} aria-expanded={showOthers}
+                  className="text-sm text-fg-2 underline hover:text-accent">
+            {showOthers ? "Amagar" : "Veure"}{" "}
+            {others.length === 1 ? "el compte que sembla no organitzar esdeveniments"
+              : `els ${others.length} comptes que semblen no organitzar esdeveniments`}
+          </button>
+          {showOthers && <ul className="divide-y divide-line">{others.map(row)}</ul>}
+        </div>
       )}
       {message?.text && <p className={`text-sm ${message.error ? "text-gastro" : "text-going"}`}>{message.text}</p>}
     </div>

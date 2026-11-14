@@ -23,6 +23,10 @@ PLAIN_WORD = re.compile(r"^[a-zà-ÿ0-9.·_'-]+$")  # paraula escrita en minúsc
 
 Profile = dict  # username, name, biography, website, followers_count
 Lookup = Callable[[str], Profile | None]  # None: no existeix o no és un compte professional
+# [{handle, name, bio, website, mentioned_by}] → {handle: {"relevant": bool, "reason": str}} (relevance.classify)
+Classify = Callable[[list[dict]], dict[str, dict]]
+# Comptes per crida al classificador: unes 25 bios caben de sobres en el límit de Groq (8.000 tokens/minut).
+MAX_CLASSIFY = 25
 
 
 def _split_caption(caption: str) -> tuple[set[str], set[str], list[str]]:
@@ -85,9 +89,40 @@ def _new_source(handle: str, counts: dict, profile: Profile | None) -> dict:
     }
 
 
-def run(store, now: datetime, lookup: Lookup) -> int:
-    """Actualitza els recomptes de les propostes i en proposa de noves. Retorna quantes n'ha proposat."""
-    sources = store.select("sources", select="id,type,handle,status,config", type="eq.instagram")
+def _profile(row: dict) -> dict:
+    """El que veu el classificador d'una proposta (nova o ja desada)."""
+    config = row.get("config") or {}
+    name = re.sub(r"^Instagram: @\S+\s*\(?|\)$", "", row.get("name") or "").strip()
+    return {"handle": row["handle"], "name": name or None, "bio": row.get("discovery_note"),
+            "website": config.get("website"), "mentioned_by": config.get("mentioned_by") or []}
+
+
+def _classify_into(rows: list[dict], existing: list[dict], store, classify: Classify) -> None:
+    """Afegeix relevant/relevance_reason a les propostes noves (abans de desar-les) i a les antigues sense classificar.
+    Si el classificador falla, les propostes es desen igualment, sense classificar (es tornarà a provar)."""
+    pending = ([r for r in rows if r["status"] == "proposed"] + existing)[:MAX_CLASSIFY]
+    if not pending:
+        return
+    try:
+        verdicts = classify([_profile(r) for r in pending])
+    except Exception as exc:  # Groq no és imprescindible: el descobriment continua
+        print(f"· Fonts proposades: no s'han pogut classificar ({type(exc).__name__}: {exc})")
+        return
+    for row in pending:
+        verdict = verdicts.get(row["handle"])
+        if not verdict:
+            continue
+        config = {**(row.get("config") or {}), "relevant": verdict["relevant"], "relevance_reason": verdict["reason"]}
+        if row in rows:
+            row["config"] = config
+        else:
+            store.update("sources", {"config": config}, id=f"eq.{row['id']}")
+
+
+def run(store, now: datetime, lookup: Lookup, classify: Classify | None = None) -> int:
+    """Actualitza els recomptes de les propostes, en proposa de noves i, si hi ha classificador, les marca com a
+    rellevants o no. Retorna quantes n'ha proposat."""
+    sources = store.select("sources", select="id,type,handle,status,config,name,discovery_note", type="eq.instagram")
     known = {s["handle"]: s for s in sources if s.get("handle")}
     followed = {s["id"]: s["handle"] for s in sources if s["status"] == "active" and s.get("handle")}
     since = (now - timedelta(days=LOOKBACK_DAYS)).isoformat()
@@ -99,12 +134,14 @@ def run(store, now: datetime, lookup: Lookup) -> int:
     for handle, c in counts.items():
         source = known.get(handle)
         if source and source["status"] == "proposed" and {k: (source["config"] or {}).get(k) for k in c} != c:
-            store.update("sources", {"config": {**(source["config"] or {}), **c}}, id=f"eq.{source['id']}")
+            source["config"] = {**(source["config"] or {}), **c}
+            store.update("sources", {"config": source["config"]}, id=f"eq.{source['id']}")
 
     candidates = sorted((h for h in counts if h not in known), key=lambda h: (-counts[h]["mentions"], h))
-    proposed = 0
-    for handle in candidates[:MAX_LOOKUPS]:
-        row = _new_source(handle, counts[handle], lookup(handle))
+    rows = [_new_source(handle, counts[handle], lookup(handle)) for handle in candidates[:MAX_LOOKUPS]]
+    if classify:
+        unclassified = [s for s in sources if s["status"] == "proposed" and "relevant" not in (s.get("config") or {})]
+        _classify_into(rows, unclassified, store, classify)
+    for row in rows:
         store.insert("sources", row)
-        proposed += row["status"] == "proposed"
-    return proposed
+    return sum(row["status"] == "proposed" for row in rows)

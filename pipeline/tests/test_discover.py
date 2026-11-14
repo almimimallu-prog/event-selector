@@ -128,6 +128,59 @@ def test_fetch_profile_other_errors_are_raised():
         instagram.fetch_profile(client, "token", "123", "festivaldau")
 
 
+def _classify(profiles):
+    """Fals classificador: «festivaldau» organitza coses; la resta no."""
+    _classify.calls.append([p["handle"] for p in profiles])
+    return {p["handle"]: {"relevant": p["handle"] == "festivaldau", "reason": f"motiu {p['handle']}"} for p in profiles}
+
+
+def test_run_classifies_new_and_unclassified_proposals():
+    _classify.calls = []
+    store = FakeStore(SOURCES, RAW)
+    discover.run(store, NOW, _lookup, _classify)
+
+    rows = {r["handle"]: r for r in store.inserted}
+    assert rows["festivaldau"]["config"]["relevant"] is True
+    assert rows["festivaldau"]["config"]["relevance_reason"] == "motiu festivaldau"
+    # Els no professionals no es classifiquen; la proposta antiga sense classificar, sí (una sola crida).
+    assert "relevant" not in rows["fabraicoats.fabricadecreacio"]["config"]
+    assert _classify.calls == [["festivaldau", "tapantoni"]]
+    [(target, values)] = [u for u in store.updated if "relevant" in u[1]["config"]]
+    assert target == "eq.s2" and values["config"]["relevant"] is False and values["config"]["mentions"] == 2
+
+
+def test_run_without_classifier_or_when_it_fails_still_proposes():
+    def broken(profiles):
+        raise RuntimeError("Groq 429")
+    for classify in (None, broken):
+        store = FakeStore(SOURCES, RAW)
+        assert discover.run(store, NOW, _lookup, classify) == 1
+        assert "relevant" not in {r["handle"]: r for r in store.inserted}["festivaldau"]["config"]
+
+
+def test_relevance_parses_groq_answer():
+    import json
+
+    import httpx
+
+    from event_pipeline import relevance
+    answer = {"profiles": [{"handle": "festivaldau", "relevant": True, "reason": "Festival de jocs a Barcelona"},
+                           {"handle": "revlon_es", "relevant": False, "reason": "Marca de cosmètics"}]}
+    seen = {}
+
+    def handler(request):
+        seen["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(answer)}}]})
+
+    profiles = [{"handle": "festivaldau", "name": "Festival DAU", "bio": "Festival del joc", "website": None, "mentioned_by": []},
+                {"handle": "revlon_es", "name": "Revlon", "bio": "Maquillatge", "website": None, "mentioned_by": []}]
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        verdicts = relevance.classify(client, "key", profiles)
+    assert verdicts == {"festivaldau": {"relevant": True, "reason": "Festival de jocs a Barcelona"},
+                        "revlon_es": {"relevant": False, "reason": "Marca de cosmètics"}}
+    assert seen["body"]["model"] == relevance.MODEL and "festivaldau" in seen["body"]["messages"][-1]["content"]
+
+
 def test_run_respects_lookup_limit():
     caption = " ".join(f"@compte{i}" for i in range(40))
     store = FakeStore(SOURCES[:1], [{"source_id": "s1", "payload": {"caption": caption}}])

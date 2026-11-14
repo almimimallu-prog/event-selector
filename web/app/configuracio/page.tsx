@@ -38,11 +38,15 @@ export default async function SettingsPage() {
     supabase.from("sources").select("id, name, url, handle, discovery_note, config").eq("status", "proposed"),
   ]);
   const proposals: Proposal[] = (proposed.data ?? []).map((s) => {
-    const config = (s.config ?? {}) as { mentions?: number; mentioned_by?: string[]; website?: string | null; followers?: number | string | null };
+    const config = (s.config ?? {}) as {
+      mentions?: number; mentioned_by?: string[]; website?: string | null; followers?: number | string | null;
+      relevant?: boolean; relevance_reason?: string;
+    };
     return {
       id: s.id, name: s.name, handle: s.handle ?? "", url: s.url, note: s.discovery_note,
       mentions: config.mentions ?? 0, mentionedBy: config.mentioned_by ?? [], website: config.website ?? null,
       followers: config.followers != null ? Number(config.followers) || null : null,
+      relevant: typeof config.relevant === "boolean" ? config.relevant : null, reason: config.relevance_reason ?? null,
     };
   });
   const sourceRows: EditableSource[] = (sources.data ?? []).map(({ config, ...s }) => ({
