@@ -3,7 +3,14 @@
 import { useSearchParams } from "next/navigation";
 import { Suspense, useActionState, useState } from "react";
 import { useHashSession } from "@/components/use-hash-session";
-import { sendMagicLink, signInWithPassword, type LoginState } from "./actions";
+import { sendMagicLink, signInWithPassword, signUp, type LoginState } from "./actions";
+
+type Mode = "password" | "link" | "signup";
+const MODES: { mode: Mode; label: string }[] = [
+  { mode: "password", label: "Contrasenya" },
+  { mode: "link", label: "Enllaç al correu" },
+  { mode: "signup", label: "Crear compte" },
+];
 
 // Missatges comprensibles per als errors més habituals de l'enllaç.
 function explain(error: string): string {
@@ -26,9 +33,10 @@ const input = "h-11 rounded-lg border border-line bg-surface px-3 outline-none f
 const submit = "h-11 rounded-lg bg-accent font-semibold text-surface disabled:opacity-60";
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<"password" | "link">("password");
+  const [mode, setMode] = useState<Mode>("password");
   const [linkState, linkAction, linkPending] = useActionState<LoginState, FormData>(sendMagicLink, { status: "idle" });
   const [passState, passAction, passPending] = useActionState<LoginState, FormData>(signInWithPassword, { status: "idle" });
+  const [signUpState, signUpAction, signUpPending] = useActionState<LoginState, FormData>(signUp, { status: "idle" });
   // Si Supabase envia l'enllaç a l'inici (Site URL), la sessió arriba aquí després del #.
   const hashSession = useHashSession();
 
@@ -49,16 +57,42 @@ export default function LoginPage() {
         <p className="text-fg-2">Entrant…</p>
       ) : (
         <>
-          <div className="grid grid-cols-2 rounded-lg border border-line bg-surface p-1 text-sm font-medium" role="tablist">
-            {(["password", "link"] as const).map((m) => (
+          <div className="grid grid-cols-3 rounded-lg border border-line bg-surface p-1 text-sm font-medium" role="tablist">
+            {MODES.map(({ mode: m, label }) => (
               <button key={m} type="button" role="tab" aria-selected={mode === m} onClick={() => setMode(m)}
-                      className={`rounded-md py-1.5 ${mode === m ? "bg-accent-soft text-accent" : "text-fg-2"}`}>
-                {m === "password" ? "Contrasenya" : "Enllaç al correu"}
+                      className={`rounded-md px-1 py-1.5 leading-tight ${mode === m ? "bg-accent-soft text-accent" : "text-fg-2"}`}>
+                {label}
               </button>
             ))}
           </div>
 
-          {mode === "password" ? (
+          {mode === "signup" ? (
+            signUpState.status === "sent" ? (
+              <div className="rounded-xl border border-line bg-surface p-5">
+                <p className="font-semibold">Confirma el correu</p>
+                <p className="mt-1 text-sm text-fg-2">
+                  T&apos;hem enviat un enllaç a {signUpState.email} per confirmar el compte. Quan l&apos;obris, ja hi
+                  seràs; després podràs entrar amb el correu i la contrasenya.
+                </p>
+              </div>
+            ) : (
+              <form action={signUpAction} className="flex flex-col gap-3">
+                <label htmlFor="email-signup" className="text-sm text-fg-2">Correu</label>
+                <input key={signUpState.email} id="email-signup" name="email" type="email" autoComplete="email" required
+                       defaultValue={signUpState.email} placeholder="nom@exemple.cat" className={input} />
+                <label htmlFor="password-signup" className="text-sm text-fg-2">Contrasenya (mínim 8 caràcters)</label>
+                <input id="password-signup" name="password" type="password" autoComplete="new-password" required
+                       minLength={8} className={input} />
+                {signUpState.status === "error" && <p className="text-sm text-gastro">{signUpState.message}</p>}
+                <button type="submit" disabled={signUpPending} className={submit}>
+                  {signUpPending ? "Creant…" : "Crear el compte"}
+                </button>
+                <p className="text-xs text-fg-3">
+                  Les teves zones, interessos i plans marcats són només teus. Els esdeveniments i les fonts són comuns.
+                </p>
+              </form>
+            )
+          ) : mode === "password" ? (
             <form action={passAction} className="flex flex-col gap-3">
               <label htmlFor="email" className="text-sm text-fg-2">Correu</label>
               {/* key: el formulari es buida després de cada intent; així el correu es conserva. */}
@@ -72,7 +106,8 @@ export default function LoginPage() {
                 {passPending ? "Entrant…" : "Entrar"}
               </button>
               <p className="text-xs text-fg-3">
-                Encara no tens contrasenya? Entra amb l&apos;enllaç al correu i crea-la a Configuració.
+                Encara no tens compte? Crea&apos;l a «Crear compte». Si tens compte però no contrasenya, entra amb
+                l&apos;enllaç al correu i crea-la a Configuració.
               </p>
             </form>
           ) : linkState.status === "sent" ? (

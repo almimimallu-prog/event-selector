@@ -95,7 +95,8 @@ export function EventBrowser(props: Props) {
   const { events, toggle, dismiss, setNote, error } = useMarks(props.events, demo);
   const [day, setDay] = useState(props.mode === "calendar" ? props.initialDay : "");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [geoOpen, setGeoOpen] = useState(false);
+  // Usuari nou (encara sense cap municipi): el selector surt obert perquè en triï un.
+  const [geoOpen, setGeoOpen] = useState(() => !zones.some((z) => z.active));
   const [hoursOpen, setHoursOpen] = useState(false);
   const [expandedFor, setExpandedFor] = useState<string | null>(null); // dia (o llista) amb "Veure'n més" obert
   const [query, setQuery] = useState("");

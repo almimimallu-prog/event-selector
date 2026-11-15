@@ -7,10 +7,19 @@ import type { AvailabilitySlot, Category } from "@/lib/types";
 const CATEGORIES: Category[] = ["cultura", "esport_natura", "formacio_tech", "gastronomia_social", "dating"];
 const MAX_WORDS = 50;
 
-// user_prefs té una sola fila (id = 1).
+const SESSION_EXPIRED = "La sessió ha caducat. Torna a entrar.";
+
+async function currentUserId(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string | null> {
+  const { data } = await supabase.auth.getClaims();
+  return typeof data?.claims?.sub === "string" ? data.claims.sub : null;
+}
+
+// user_prefs: una fila per usuari (la RLS només deixa tocar la pròpia). Upsert: si encara no en té, es crea.
 async function updatePrefs(values: Record<string, unknown>): Promise<string | null> {
   const supabase = await createClient();
-  const { error } = await supabase.from("user_prefs").update(values).eq("id", 1);
+  const userId = await currentUserId(supabase);
+  if (!userId) return SESSION_EXPIRED;
+  const { error } = await supabase.from("user_prefs").upsert({ ...values, user_id: userId });
   if (error) return error.message;
   revalidatePath("/", "layout");
   return null;
@@ -19,7 +28,9 @@ async function updatePrefs(values: Record<string, unknown>): Promise<string | nu
 export async function setCategoryWeight(category: Category, weight: number): Promise<string | null> {
   if (!CATEGORIES.includes(category) || !(weight >= 0 && weight <= 1)) return "Valor no vàlid.";
   const supabase = await createClient();
-  const { data } = await supabase.from("user_prefs").select("category_weights").eq("id", 1).maybeSingle();
+  const userId = await currentUserId(supabase);
+  if (!userId) return SESSION_EXPIRED;
+  const { data } = await supabase.from("user_prefs").select("category_weights").eq("user_id", userId).maybeSingle();
   return updatePrefs({ category_weights: { ...(data?.category_weights ?? {}), [category]: weight } });
 }
 

@@ -32,7 +32,17 @@ cp .env.example .env         # i omple els valors
 
 ### Base de dades
 Aplica els fitxers de `supabase/migrations/` per ordre (Supabase → SQL Editor, o `supabase db push` amb la CLI).
-Després, a **Authentication → Sign In / Providers**, desactiva *Allow new users to sign up*: l'app és d'un sol usuari.
+Després, a **Authentication → Sign In / Providers**, activa *Allow new users to sign up*: qualsevol persona es pot
+registrar amb el correu (pestanya «Crear compte» de `/login`).
+
+**Multiusuari** (migració `20261115000000_multi_user.sql`):
+- Personal de cada usuari (columna `user_id` + RLS): marques ⭐ ✅ ✕ i notes (`user_events`, i per tant
+  l'aprenentatge), municipis (`user_zones`) i interessos, paraules bloquejades i disponibilitat (`user_prefs`).
+  Un usuari nou comença amb les preferències per defecte i sense municipis (l'app li demana el primer).
+- Compartit entre tothom: esdeveniments, fonts, la safata «Per revisar», «Actualitzar ara» i els plans afegits a mà.
+- El pipeline recull la unió de municipis de tots els usuaris (cada municipi una vegada, amb el radi més gran).
+- El correu integrat de Supabase només envia uns quants correus per hora (confirmació de registre i enllaços):
+  si se n'envien molts, cal configurar un SMTP propi (Authentication → Emails → SMTP Settings).
 
 ## Publicació i automatització
 

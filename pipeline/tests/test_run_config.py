@@ -32,6 +32,22 @@ def test_load_zones_zero_radius_fetches_municipality():
     assert run.load_zones(store)[0].radius_km == run.MIN_FETCH_KM
 
 
+def test_load_zones_union_of_users_keeps_widest_radius():
+    # Amb diversos usuaris, zone_list (service_role) retorna les zones de tots: el mateix municipi una sola
+    # vegada, amb el radi més gran.
+    store = FakeStore(zones=[
+        {"name": "Barcelona", "lat": 41.3874, "lon": 2.1686, "radius_km": "15.0", "active": True},
+        {"name": "Igualada", "lat": 41.58, "lon": 1.62, "radius_km": "30.0", "active": True},
+        {"name": "Barcelona", "lat": 41.3874, "lon": 2.1686, "radius_km": "25.0", "active": True},
+        {"name": "Girona", "lat": 41.98, "lon": 2.82, "radius_km": "10.0", "active": True},
+    ])
+    assert run.load_zones(store) == (
+        Zone("Barcelona", 41.3874, 2.1686, 25.0),
+        Zone("Igualada", 41.58, 1.62, 30.0),
+        Zone("Girona", 41.98, 2.82, 10.0),
+    )
+
+
 def test_load_zones_falls_back_when_missing():
     assert run.load_zones(FakeStore(error=RuntimeError("Supabase 404"))) == DEFAULT_ZONES
     assert run.load_zones(FakeStore(zones=[])) == DEFAULT_ZONES

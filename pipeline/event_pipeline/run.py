@@ -47,14 +47,23 @@ def ensure_seed_sources(store: Store) -> None:
 
 
 def load_zones(store: Store) -> tuple[Zone, ...]:
-    """Zones actives editades des de l'app (Configuració). Si no se'n poden llegir, les per defecte."""
+    """Unió de les zones actives de tots els usuaris (Configuració de l'app). Si no se'n poden llegir, les per defecte.
+
+    Amb la service_role, zone_list retorna les zones de tothom: un municipi que hi surt diverses vegades es
+    recull una sola vegada, amb el radi més gran."""
     try:
         rows = store.rpc("zone_list", {}, timeout=60)
     except Exception as exc:  # p. ex. migració 20261004000000_zone_list.sql encara no aplicada
         print(f"· Zones: no s'han pogut llegir ({exc}); es fan servir les per defecte")
         return DEFAULT_ZONES
-    # Radi 0 = només el municipi: les fonts en recullen uns quants km i l'app ja filtra pel nom del municipi.
-    zones = tuple(Zone(r["name"], r["lat"], r["lon"], max(float(r["radius_km"]), MIN_FETCH_KM)) for r in rows if r["active"])
+    widest: dict[tuple[str, float, float], float] = {}
+    for r in rows:
+        if not r["active"]:
+            continue
+        # Radi 0 = només el municipi: les fonts en recullen uns quants km i l'app ja filtra pel nom del municipi.
+        key, radius = (r["name"], r["lat"], r["lon"]), max(float(r["radius_km"]), MIN_FETCH_KM)
+        widest[key] = max(widest.get(key, 0.0), radius)
+    zones = tuple(Zone(name, lat, lon, radius) for (name, lat, lon), radius in widest.items())
     return zones or DEFAULT_ZONES
 
 

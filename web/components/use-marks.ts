@@ -22,11 +22,17 @@ export function useMarks(events: AppEvent[], demo = false) {
       setOverrides((m) => ({ ...m, [event.id]: mark }));
       if (demo) return;
       const supabase = createClient();
-      const { error } = mark.state
-        ? await supabase.from("user_events").upsert({
-            event_id: event.id, state: mark.state, dismiss_reason: mark.reason, note: mark.note,
-          })
-        : await supabase.from("user_events").delete().eq("event_id", event.id);
+      // Marques personals: clau (user_id, event_id); la RLS només deixa tocar les de qui ha entrat.
+      const { data: session } = await supabase.auth.getSession();
+      const userId = session.session?.user.id;
+      const { error } = !userId
+        ? { error: new Error("sense sessió") }
+        : mark.state
+          ? await supabase.from("user_events").upsert(
+              { user_id: userId, event_id: event.id, state: mark.state, dismiss_reason: mark.reason, note: mark.note },
+              { onConflict: "user_id,event_id" },
+            )
+          : await supabase.from("user_events").delete().eq("user_id", userId).eq("event_id", event.id);
       if (error) {
         setOverrides((m) => {
           const next = { ...m };
