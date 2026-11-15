@@ -61,7 +61,12 @@ export type Prefs = {
   category_weights: Partial<Record<Category, number>>;
   availability: AvailabilitySlot[];
   default_availability_weight: number;
-  /** Paraules bloquejades: els plans que les contenen no surten mai (columna blocked_tags). */
+  /** Paraules bloquejades particulars de l'usuari (user_prefs.blocked_tags). */
   blocked_tags: string[];
+  /** Paraules bloquejades comunes a tots els usuaris (shared_settings.blocked_tags). */
+  common_blocked_tags: string[];
   learning: Learning;
 };
+
+/** Zona d'una paraula bloquejada: només meva o per a tothom. */
+export type BlockedZone = "personal" | "common";

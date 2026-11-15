@@ -16,6 +16,7 @@ const PREFS: Prefs = {
   ],
   default_availability_weight: 0.2,
   blocked_tags: [],
+  common_blocked_tags: [],
   learning: NO_LEARNING,
 };
 const SAMPLES: [string, Category, string, string, number, string | null][] = [

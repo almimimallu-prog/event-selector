@@ -115,19 +115,21 @@ export function EventBrowser(props: Props) {
     return new Map<string, Score>(events.map((e) => [e.id, computeScore(e, prefs, zones, now)]));
   }, [events, prefs, zones]);
 
-  // Els plans propis (⭐ ✅) sempre surten; els filtres ràpids i les paraules bloquejades només afecten la resta.
+  // Els plans propis (⭐ ✅) sempre surten; els filtres ràpids i les paraules bloquejades (particulars i comunes)
+  // només afecten la resta.
   const { visible, hiddenByFilters } = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const blocked = [...prefs.blocked_tags, ...prefs.common_blocked_tags];
     const base = events.filter(
       (e) =>
         e.user_state !== "dismissed" &&
         (!q || [e.title, e.venue_name, e.city, ...e.tags].join(" ").toLowerCase().includes(q)) &&
-        (isMine(e) || !isBlocked(e, prefs.blocked_tags)),
+        (isMine(e) || !isBlocked(e, blocked)),
     );
     const shown = base.filter((e) => isMine(e) || passesQuick(e, filters));
     const shownIds = new Set(shown.map((e) => e.id));
     return { visible: shown, hiddenByFilters: base.filter((e) => !shownIds.has(e.id)) };
-  }, [events, query, filters, prefs.blocked_tags]);
+  }, [events, query, filters, prefs.blocked_tags, prefs.common_blocked_tags]);
   const filtersOn = filters.off.length > 0 || filters.free || filters.hours != null;
 
   const byDay = useMemo(() => {

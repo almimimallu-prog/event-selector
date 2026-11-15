@@ -58,7 +58,7 @@ export default function DevSettingsPreview() {
       </section>
       <section className="rounded-2xl border border-line bg-surface p-5">
         <h2 className="mb-3 font-semibold">Paraules bloquejades</h2>
-        <BlockedWordsEditor words={["infantil", "networking"]} />
+        <BlockedWordsEditor personal={["networking", "en anglès"]} common={["infantil", "50 plus"]} />
       </section>
       <section className="rounded-2xl border border-line bg-surface p-5">
         <h2 className="mb-3 font-semibold">Disponibilitat</h2>

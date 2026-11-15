@@ -82,7 +82,7 @@ export default async function SettingsPage() {
 
       <section className="rounded-2xl border border-line bg-surface p-5">
         <h2 className="mb-3 font-semibold">Paraules bloquejades</h2>
-        <BlockedWordsEditor words={prefs.blocked_tags} />
+        <BlockedWordsEditor personal={prefs.blocked_tags} common={prefs.common_blocked_tags} />
       </section>
 
       <section className="rounded-2xl border border-line bg-surface p-5">

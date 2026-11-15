@@ -1,10 +1,10 @@
 "use client";
 
-import { X } from "lucide-react";
+import { User, Users, X } from "lucide-react";
 import { useState, useTransition } from "react";
 import { CATEGORIES } from "@/lib/categories";
-import type { Category, Learning } from "@/lib/types";
-import { setBlockedWords, setCategoryWeight } from "./prefs-actions";
+import type { BlockedZone, Category, Learning } from "@/lib/types";
+import { editBlockedWord, setCategoryWeight } from "./prefs-actions";
 
 const LEVELS = ["Gens", "Poc", "Normal", "Bastant", "Molt"];
 const levelOf = (w: number) => LEVELS[Math.round(w * 4)];
@@ -54,37 +54,45 @@ export function InterestsEditor({ weights, learning }: { weights: Partial<Record
   );
 }
 
-export function BlockedWordsEditor({ words }: { words: string[] }) {
-  const [list, setList] = useState(words);
-  const [draft, setDraft] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
+type BlockedLists = Record<BlockedZone, string[]>;
+const OTHER_ZONE: Record<BlockedZone, BlockedZone> = { personal: "common", common: "personal" };
+const ZONE_UI: Record<BlockedZone, { title: string; empty: string; moveLabel: string; MoveIcon: typeof Users }> = {
+  common: {
+    title: "Comunes · per a tothom",
+    empty: "Cap paraula comuna.",
+    moveLabel: "Passar a les meves",
+    MoveIcon: User,
+  },
+  personal: {
+    title: "Només meves",
+    empty: "Cap paraula particular.",
+    moveLabel: "Passar a les comunes",
+    MoveIcon: Users,
+  },
+};
 
-  function save(next: string[]) {
-    const previous = list;
-    setList(next);
-    start(async () => {
-      const e = await setBlockedWords(next);
-      if (e) setList(previous);
-      setError(e);
-    });
-  }
-
-  function add() {
-    const w = draft.trim().toLowerCase();
-    if (w.length < 2 || list.includes(w)) return setDraft("");
-    save([...list, w]);
-    setDraft("");
-  }
-
+function WordGroup({ zone, words, disabled, onMove, onRemove }: {
+  zone: BlockedZone; words: string[]; disabled: boolean;
+  onMove: (word: string) => void; onRemove: (word: string) => void;
+}) {
+  const { title, empty, moveLabel, MoveIcon } = ZONE_UI[zone];
   return (
-    <div className={`flex flex-col gap-2.5 ${pending ? "opacity-70" : ""}`}>
-      {list.length > 0 && (
+    <div className="flex flex-col gap-1.5">
+      <h3 className="text-sm font-medium text-fg-2">{title}</h3>
+      {words.length === 0 ? (
+        <p className="text-sm text-fg-3">{empty}</p>
+      ) : (
         <ul className="flex flex-wrap gap-1.5">
-          {list.map((w) => (
-            <li key={w} className="inline-flex items-center gap-1 rounded-full border border-line bg-bg py-0.5 pr-1 pl-3 text-sm">
+          {words.map((w) => (
+            <li key={w} className="inline-flex items-center gap-0.5 rounded-full border border-line bg-bg py-0.5 pr-1 pl-3 text-sm">
               {w}
-              <button type="button" aria-label={`Treure «${w}»`} onClick={() => save(list.filter((x) => x !== w))}
+              <button type="button" aria-label={`${moveLabel}: «${w}»`} title={moveLabel} disabled={disabled}
+                      onClick={() => onMove(w)}
+                      className="ml-1 grid size-6 place-items-center rounded-full text-fg-3 hover:bg-surface-2">
+                <MoveIcon size={14} />
+              </button>
+              <button type="button" aria-label={`Treure «${w}»`} title="Treure" disabled={disabled}
+                      onClick={() => onRemove(w)}
                       className="grid size-6 place-items-center rounded-full text-fg-3 hover:bg-surface-2">
                 <X size={14} />
               </button>
@@ -92,19 +100,71 @@ export function BlockedWordsEditor({ words }: { words: string[] }) {
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+const without = (words: string[], word: string) => words.filter((w) => w !== word);
+
+export function BlockedWordsEditor({ personal, common }: { personal: string[]; common: string[] }) {
+  const [lists, setLists] = useState<BlockedLists>({ personal, common });
+  const [draft, setDraft] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  // Canvi optimista: es mostra de seguida i, si el servidor falla, es desfà.
+  function run(word: string, action: "add" | "remove" | "move", zone: BlockedZone, next: BlockedLists) {
+    const previous = lists;
+    setLists(next);
+    start(async () => {
+      const e = await editBlockedWord(word, action, zone);
+      if (e) setLists(previous);
+      setError(e);
+    });
+  }
+
+  const remove = (word: string, zone: BlockedZone) => run(word, "remove", zone, { ...lists, [zone]: without(lists[zone], word) });
+
+  function move(word: string, to: BlockedZone) {
+    const from = OTHER_ZONE[to];
+    run(word, "move", to, { [to]: [...lists[to], word], [from]: without(lists[from], word) } as BlockedLists);
+  }
+
+  function add(zone: BlockedZone) {
+    const w = draft.trim().toLowerCase();
+    setDraft("");
+    if (w.length < 2 || lists[zone].includes(w)) return;
+    if (lists[OTHER_ZONE[zone]].includes(w)) return move(w, zone);
+    run(w, "add", zone, { ...lists, [zone]: [...lists[zone], w] });
+  }
+
+  const addButton = "h-10 flex-1 rounded-lg px-3 text-sm font-semibold disabled:opacity-60";
+
+  return (
+    <div className={`flex flex-col gap-3 ${pending ? "opacity-70" : ""}`}>
+      {(["common", "personal"] as const).map((zone) => (
+        <WordGroup key={zone} zone={zone} words={lists[zone]} disabled={pending}
+                   onMove={(w) => move(w, OTHER_ZONE[zone])} onRemove={(w) => remove(w, zone)} />
+      ))}
+      <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="p. ex. infantil, networking, en anglès"
+             aria-label="Paraula a bloquejar" onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), add("personal"))}
+             className="h-10 min-w-0 rounded-lg border border-line bg-bg px-3 outline-none focus:border-accent" />
       <div className="flex gap-2">
-        <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="p. ex. infantil, networking, en anglès"
-               aria-label="Paraula a bloquejar" onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), add())}
-               className="h-10 min-w-0 flex-1 rounded-lg border border-line bg-bg px-3 outline-none focus:border-accent" />
-        <button type="button" onClick={add} disabled={pending}
-                className="h-10 rounded-lg bg-accent px-4 text-sm font-semibold text-surface disabled:opacity-60">
-          Afegir
+        <button type="button" onClick={() => add("personal")} disabled={pending}
+                className={`${addButton} bg-accent text-surface`}>
+          Afegir per a mi
+        </button>
+        <button type="button" onClick={() => add("common")} disabled={pending}
+                className={`${addButton} border border-accent text-accent`}>
+          Afegir per a tothom
         </button>
       </div>
       {error && <p className="text-sm text-gastro">{error}</p>}
       <p className="text-xs text-fg-3">
-        Els plans que tinguin alguna d&apos;aquestes paraules al títol, l&apos;explicació, el lloc o les etiquetes no surten.
-        Els que ja has marcat amb ⭐ o ✅ sí. «infantil» també bloqueja «infantils».
+        Els plans que tinguin alguna paraula de les dues zones al títol, l&apos;explicació, el lloc o les etiquetes no
+        surten. Els que ja has marcat amb ⭐ o ✅ sí. «infantil» també bloqueja «infantils». Les comunes s&apos;apliquen a
+        tots els usuaris i qualsevol les pot canviar; amb <Users size={12} className="inline" aria-hidden /> i{" "}
+        <User size={12} className="inline" aria-hidden /> passes una paraula d&apos;una zona a l&apos;altra.
       </p>
     </div>
   );
